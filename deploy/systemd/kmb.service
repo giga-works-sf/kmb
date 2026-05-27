@@ -1,0 +1,38 @@
+[Unit]
+Description=KMB Reservation System (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# customers-forecast と同じユーザーで実行
+User=forecast
+Group=forecast
+
+WorkingDirectory=/opt/kmb
+
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="TZ=Asia/Tokyo"
+
+# .env を読み込んで起動（EnvironmentFile で直接渡す）
+EnvironmentFile=/opt/kmb/.env
+
+# 127.0.0.1:8002 でのみ受け付け、外部公開は nginx 経由
+ExecStart=/usr/local/bin/uv run uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8002
+
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+# data.db・outbox/ の書き込みに必要
+ReadWritePaths=/opt/kmb /home/forecast
+
+[Install]
+WantedBy=multi-user.target
