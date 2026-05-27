@@ -4,7 +4,7 @@ import smtplib
 from datetime import datetime
 from email.message import EmailMessage
 
-from app.config import (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
+from app.config import (MAIL_RELAY_HOST, MAIL_RELAY_PORT,
                          MAIL_FROM, SHOP_NAME, OUTBOX_DIR)
 
 
@@ -42,15 +42,14 @@ def send_confirmation(reservation: dict, effective_cfg: dict) -> None:
     msg["To"]      = reservation["email"]
     msg.set_content(body)
 
-    if not SMTP_HOST:
+    if not MAIL_RELAY_HOST:
         _save_to_outbox(msg, reservation["id"])
         return
 
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+        # GWS SMTP relay — IP アドレスで認証済みのため login() 不要
+        with smtplib.SMTP(MAIL_RELAY_HOST, MAIL_RELAY_PORT) as s:
             s.starttls()
-            if SMTP_USER:
-                s.login(SMTP_USER, SMTP_PASS)
             s.send_message(msg)
     except Exception as exc:
         import sys

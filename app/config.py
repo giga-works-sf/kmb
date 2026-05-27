@@ -12,13 +12,12 @@ TIME_SLOT_STEP_MIN = 30
 
 NOTE_MAX_LEN = 500
 
-SMTP_HOST = os.getenv("SMTP_HOST", "")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASS = os.getenv("SMTP_PASS", "")
-MAIL_FROM = os.getenv("MAIL_FROM", "")
-SHOP_NAME = os.getenv("SHOP_NAME", "KanpAI")
-BASE_URL  = os.getenv("BASE_URL", "http://localhost:8000")
+MAIL_FROM        = os.getenv("MAIL_FROM", "")
+MAIL_RELAY_HOST  = os.getenv("MAIL_RELAY_HOST", "")
+MAIL_RELAY_PORT  = int(os.getenv("MAIL_RELAY_PORT", "587"))
+ADMIN_EMAIL      = os.getenv("ADMIN_EMAIL", "")
+SHOP_NAME        = os.getenv("SHOP_NAME", "KanpAI")
+APP_BASE_URL     = os.getenv("APP_BASE_URL", "http://localhost:8000")
 
 ROOT_DIR   = Path(__file__).parent.parent
 OUTBOX_DIR = ROOT_DIR / "outbox"
