@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}ご予約完了{% endblock %}
+{% block content %}
+<h2>✅ ご予約が完了しました</h2>
+<div class="msg-ok">確認メールを {{ res.email }} に送信しました。</div>
+
+<div class="form-wrap" style="margin-top:16px">
+  <h3 style="font-size:1rem;margin-bottom:12px">ご予約内容</h3>
+  <table style="width:100%;font-size:0.9rem;border-collapse:collapse">
+    <tr><td style="padding:6px 0;color:#666;width:120px">日付</td>
+        <td><strong>{{ res.date }}</strong></td></tr>
+    <tr><td style="padding:6px 0;color:#666">開始時間</td>
+        <td><strong>{{ start_time }}〜</strong></td></tr>
+    <tr><td style="padding:6px 0;color:#666">人数</td>
+        <td><strong>{{ res.num_people }}名</strong></td></tr>
+    <tr><td style="padding:6px 0;color:#666">代表者名</td>
+        <td>{{ res.name }} 様</td></tr>
+    <tr><td style="padding:6px 0;color:#666">電話番号</td>
+        <td>{{ res.phone }}</td></tr>
+    {% if res.note %}
+    <tr><td style="padding:6px 0;color:#666">備考</td>
+        <td>{{ res.note }}</td></tr>
+    {% endif %}
+  </table>
+  {% if cfg.course_1 or cfg.course_2 or cfg.course_3 %}
+  <div style="margin-top:14px;padding:10px;background:#f9f9f9;border-radius:6px;">
+    <strong style="font-size:0.85rem">【コース内容】</strong>
+    {% for c in [cfg.course_1, cfg.course_2, cfg.course_3] if c %}
+    <p style="font-size:0.82rem;margin-top:4px">・{{ c }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+<p style="margin-top:16px">変更・キャンセルはお電話にてご連絡ください。</p>
+<p style="margin-top:12px"><a href="/kmb/">← トップに戻る</a></p>
+{% endblock %}

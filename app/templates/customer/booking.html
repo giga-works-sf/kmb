@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}予約フォーム{% endblock %}
+{% block content %}
+<h2>ご予約フォーム</h2>
+{% if error %}
+<div class="msg-err">{{ error }}</div>
+{% endif %}
+
+<div class="form-wrap">
+  <form method="post" action="/kmb/book">
+    <input type="hidden" name="target_date" value="{{ target_date }}">
+
+    <label>日付</label>
+    <input type="text" value="{{ target_date }}" disabled>
+
+    {% if rotations | length > 1 %}
+    <label>開始時間</label>
+    <select name="rotation">
+      {% for r in rotations %}
+      <option value="{{ r.rotation }}"
+        {% if r.rotation == selected_rotation %}selected{% endif %}>
+        {{ r.time }}〜（残席{{ r.remaining }}名）
+      </option>
+      {% endfor %}
+    </select>
+    {% else %}
+    <input type="hidden" name="rotation" value="{{ rotations[0].rotation }}">
+    <label>開始時間</label>
+    <input type="text" value="{{ rotations[0].time }}〜（残席{{ rotations[0].remaining }}名）" disabled>
+    {% endif %}
+
+    <label>人数</label>
+    <select name="num_people">
+      {% for i in range(1, remaining + 1) %}
+      <option value="{{ i }}">{{ i }}名</option>
+      {% endfor %}
+    </select>
+
+    <label>代表者名 <span style="color:red">*</span></label>
+    <input type="text" name="name" required placeholder="山田 太郎">
+
+    <label>電話番号 <span style="color:red">*</span></label>
+    <input type="tel" name="phone" required placeholder="090-0000-0000">
+
+    <label>メールアドレス <span style="color:red">*</span></label>
+    <input type="email" name="email" required placeholder="example@email.com">
+
+    <label>備考（任意）</label>
+    <textarea name="note" placeholder="アレルギー・その他ご要望など"></textarea>
+
+    {% if cfg.course_1 or cfg.course_2 or cfg.course_3 %}
+    <div style="margin-top:16px;padding:12px;background:#f9f9f9;border-radius:6px;">
+      <strong style="font-size:0.85rem">【コース内容】</strong>
+      {% for c in [cfg.course_1, cfg.course_2, cfg.course_3] if c %}
+      <p style="font-size:0.82rem;margin-top:4px">・{{ c }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <button class="btn btn-primary" type="submit" style="margin-top:20px;width:100%">
+      予約を確定する
+    </button>
+  </form>
+</div>
+<p style="margin-top:12px">
+  <a href="/kmb/calendar/{{ target_date[:4] }}/{{ target_date[5:7] | int }}">← カレンダーに戻る</a>
+</p>
+{% endblock %}

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}予約{% endblock %} | {{ shop_name }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Hiragino Sans", "Meiryo", sans-serif;
+           background: #f8f8f6; color: #222; min-height: 100vh; }
+    header { background: #1a1a1a; color: #fff; padding: 14px 24px; }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+    header a { color: #ccc; text-decoration: none; font-size: 0.85rem; margin-left: 16px; }
+    main { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+    h2 { font-size: 1.2rem; margin-bottom: 16px; }
+    .msg-ok  { background: #e6f4ea; border-left: 4px solid #34a853;
+               padding: 10px 14px; margin-bottom: 16px; border-radius: 4px; }
+    .msg-err { background: #fdecea; border-left: 4px solid #ea4335;
+               padding: 10px 14px; margin-bottom: 16px; border-radius: 4px; }
+    /* Calendar */
+    .cal-nav { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+    .cal-nav a { text-decoration: none; color: #1a73e8; font-weight: bold; font-size: 1.1rem; }
+    .cal-nav span { font-size: 1.1rem; font-weight: 600; min-width: 120px; text-align: center; }
+    table.calendar { width: 100%; border-collapse: collapse; }
+    table.calendar th { background: #444; color: #fff; padding: 6px; font-size: 0.8rem; text-align: center; }
+    table.calendar th.sat { background: #1a73e8; }
+    table.calendar th.sun { background: #ea4335; }
+    table.calendar td { border: 1px solid #ddd; vertical-align: top;
+                        min-height: 60px; padding: 4px; font-size: 0.75rem; }
+    table.calendar td.empty { background: #f0f0f0; }
+    .day-num { font-weight: 600; font-size: 0.85rem; margin-bottom: 2px; }
+    .day-info { font-size: 0.75rem; line-height: 1.4; }
+    /* Customer cell kinds */
+    td.available { background: #fff; cursor: pointer; }
+    td.available:hover { background: #e8f0fe; }
+    td.tel      { background: #f5f5f5; color: #888; }
+    td.closed   { background: #f5f5f5; color: #aaa; }
+    td.full     { background: #fdecea; color: #c62828; }
+    td.out_of_range { background: #f0f0f0; color: #bbb; }
+    /* Admin cell colors */
+    td.color-green { background: #e6f4ea; }
+    td.color-red   { background: #fdecea; }
+    td.color-neutral { background: #fff; }
+    td.closed-day { background: #e0e0e0; color: #888; }
+    td.admin-cell { cursor: pointer; }
+    td.admin-cell:hover { filter: brightness(0.96); }
+    .rot-line { font-size: 0.7rem; line-height: 1.5; }
+    .override-mark { color: #e65100; font-weight: bold; }
+    /* Form */
+    .form-wrap { background: #fff; border-radius: 8px; padding: 24px;
+                 box-shadow: 0 1px 4px rgba(0,0,0,.1); max-width: 480px; }
+    label { display: block; font-size: 0.85rem; margin-top: 14px; font-weight: 600; }
+    input, select, textarea {
+      width: 100%; padding: 8px 10px; margin-top: 4px;
+      border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem;
+      font-family: inherit;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .btn { display: inline-block; padding: 10px 24px; border-radius: 4px;
+           border: none; cursor: pointer; font-size: 0.95rem; font-family: inherit; }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1558b0; }
+    .btn-danger  { background: #ea4335; color: #fff; font-size: 0.8rem; padding: 6px 12px; }
+    .btn-sm      { font-size: 0.8rem; padding: 6px 12px; background: #f1f3f4;
+                   border: 1px solid #ccc; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .res-card { background: #fff; border: 1px solid #ddd; border-radius: 6px;
+                padding: 12px 16px; margin-bottom: 10px; }
+    .res-meta { font-size: 0.8rem; color: #666; margin-top: 4px; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+<header>
+  <h1>{{ shop_name }}
+    {% block header_links %}{% endblock %}
+  </h1>
+</header>
+<main>
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
