@@ -10,8 +10,11 @@ from app.config import (MAIL_RELAY_HOST, MAIL_RELAY_PORT,
 _WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
 
 
-def send_confirmation(reservation: dict, effective_cfg: dict) -> None:
-    """Send booking confirmation. Errors are printed to stderr, never raised."""
+def send_verification(reservation: dict, effective_cfg: dict, token: str) -> None:
+    """Send email verification link. Errors are printed to stderr, never raised."""
+    from app.config import APP_BASE_URL
+    verify_url = f"{APP_BASE_URL}/kmb/verify/{token}"
+
     course = effective_cfg.get("course")
     rotation = reservation["rotation"]
     start_time = (effective_cfg["start_time_1"] if rotation == 1
@@ -22,8 +25,9 @@ def send_confirmation(reservation: dict, effective_cfg: dict) -> None:
 
     body = (
         f"【予約リクエスト確認】{SHOP_NAME}\n\n"
-        f"以下の内容でご予約を承りました。\n"
-        f"予約が確定しましたら追ってご連絡を差し上げます。\n\n"
+        f"以下のURLをクリックすることで予約が確定いたします（有効期限2時間）\n\n"
+        f"{verify_url}\n\n"
+        f"──── ご予約内容 ────\n"
         f"日付　　: {date_str}\n"
         f"開始時間: {start_time}\n"
         f"人数　　: {reservation['num_people']}名\n"
@@ -34,10 +38,10 @@ def send_confirmation(reservation: dict, effective_cfg: dict) -> None:
         body += f"備考　　: {reservation['note']}\n"
     if course:
         body += f"\n【コース内容】\n{course}\n"
-    body += f"\n変更・キャンセルのご連絡はお電話にてお願いいたします。\n{SHOP_NAME}\n"
+    body += f"\n{SHOP_NAME}\n"
 
     msg = EmailMessage()
-    msg["Subject"] = f"【予約リクエスト確認】{date_str} {start_time}〜 {SHOP_NAME}"
+    msg["Subject"] = f"【メール確認】{date_str} {start_time}〜 {SHOP_NAME}"
     msg["From"]    = MAIL_FROM or "noreply@example.com"
     msg["To"]      = reservation["email"]
     msg.set_content(body)

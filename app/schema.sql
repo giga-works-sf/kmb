@@ -37,8 +37,10 @@ CREATE TABLE IF NOT EXISTS reservation (
     email       TEXT NOT NULL,
     note        TEXT,
     confirmed   INTEGER NOT NULL DEFAULT 0,
-    status      TEXT NOT NULL DEFAULT 'active'
-                CHECK (status IN ('active', 'cancelled')),
+    status      TEXT NOT NULL DEFAULT 'pending_verify'
+                CHECK (status IN ('active', 'cancelled', 'pending_verify')),
+    email_token       TEXT,
+    token_expires_at  TEXT,
     created_at  TEXT NOT NULL,
     updated_at  TEXT NOT NULL
 );

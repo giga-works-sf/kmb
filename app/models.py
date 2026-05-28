@@ -1,6 +1,7 @@
 """All SQLite CRUD operations. No business logic — just read/write."""
 from __future__ import annotations
-from datetime import date as _date_cls
+import secrets
+from datetime import date as _date_cls, datetime, timezone, timedelta
 from typing import Optional
 from app.db import get_conn, now
 
@@ -189,8 +190,12 @@ def _weekday_cap(conn, date_str: str, rotation: int, dc: Optional[dict]) -> int:
 def create_reservation(
     date: str, rotation: int, name: str, num_people: int,
     phone: str, email: str, note: Optional[str],
-) -> Optional[int]:
-    """Insert reservation inside a transaction with re-check. Returns id or None."""
+) -> Optional[tuple[int, str]]:
+    """Insert reservation (pending_verify) inside a transaction with re-check.
+    Returns (id, email_token) or None if capacity exceeded."""
+    token = secrets.token_urlsafe(32)
+    expires = (datetime.now(timezone.utc) + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
         dc_row = conn.execute(
@@ -211,13 +216,41 @@ def create_reservation(
 
         ts = now()
         cur = conn.execute(
-            "INSERT INTO reservation (date,rotation,name,num_people,phone,email,note,"
-            "created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
-            (date, rotation, name, num_people, phone, email, note or None, ts, ts),
+            "INSERT INTO reservation "
+            "(date,rotation,name,num_people,phone,email,note,"
+            "status,email_token,token_expires_at,created_at,updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (date, rotation, name, num_people, phone, email, note or None,
+             "pending_verify", token, expires, ts, ts),
         )
         rid = cur.lastrowid
         conn.commit()
-        return rid
+        return rid, token
+
+
+def activate_by_token(token: str) -> Optional[dict]:
+    """Verify email token and activate reservation. Returns reservation dict or None."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM reservation WHERE email_token=? AND status='pending_verify'",
+            (token,),
+        ).fetchone()
+        if not row:
+            return None
+        res = dict(row)
+        expires = datetime.strptime(
+            res["token_expires_at"], "%Y-%m-%d %H:%M:%S"
+        ).replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > expires:
+            return None  # 期限切れ — レコードはそのまま残す
+        conn.execute(
+            "UPDATE reservation SET status='active', email_token=NULL, "
+            "token_expires_at=NULL, updated_at=? WHERE id=?",
+            (now(), res["id"]),
+        )
+        conn.commit()
+        res["status"] = "active"
+        return res
 
 
 def get_reservation(rid: int) -> Optional[dict]:
@@ -227,9 +260,11 @@ def get_reservation(rid: int) -> Optional[dict]:
 
 
 def list_reservations_for_date(date: str) -> list[dict]:
+    """Returns active + pending_verify reservations for admin view."""
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT * FROM reservation WHERE date=? AND status='active' "
+            "SELECT * FROM reservation "
+            "WHERE date=? AND status IN ('active','pending_verify') "
             "ORDER BY rotation, created_at",
             (date,),
         ).fetchall()

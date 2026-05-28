@@ -126,12 +126,12 @@ async def booking_submit(
                     remaining=sel["remaining"] if sel else 0,
                     error=" / ".join(errors))
 
-    rid = models.create_reservation(
+    result = models.create_reservation(
         target_date, rotation, name.strip(), num_people,
         phone.strip(), email.strip(), note.strip() or None,
     )
 
-    if rid is None:
+    if result is None:
         rotations = _available_rotations(target_date, cfg)
         sel = next((r for r in rotations if r["rotation"] == rotation),
                    rotations[0] if rotations else None)
@@ -142,21 +142,35 @@ async def booking_submit(
                     remaining=sel["remaining"] if sel else 0,
                     error="申し訳ありません、ご希望の人数分の空席がなくなりました。")
 
+    rid, token = result
     res = models.get_reservation(rid)
-    mailer.send_confirmation(res, cfg)
+    mailer.send_verification(res, cfg, token)
     return RedirectResponse(f"/kmb/complete/{rid}", status_code=303)
 
 
 @router.get("/complete/{rid}", response_class=HTMLResponse)
 async def booking_complete(request: Request, rid: int):
     res = models.get_reservation(rid)
-    if not res or res["status"] != "active":
+    if not res or res["status"] not in ("active", "pending_verify"):
         return RedirectResponse("/kmb/")
     all_defaults = models.get_all_defaults()
     cfg = models.get_effective_config(res["date"], all_defaults)
     start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
     weekday_name = _WEEKDAY_NAMES[date.fromisoformat(res["date"]).weekday()]
     return _tpl("customer/complete.html", request,
+                res=res, cfg=cfg, start_time=start_time, weekday_name=weekday_name)
+
+
+@router.get("/verify/{token}", response_class=HTMLResponse)
+async def verify_email(request: Request, token: str):
+    res = models.activate_by_token(token)
+    if res is None:
+        return _tpl("customer/verify_error.html", request)
+    all_defaults = models.get_all_defaults()
+    cfg = models.get_effective_config(res["date"], all_defaults)
+    start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
+    weekday_name = _WEEKDAY_NAMES[date.fromisoformat(res["date"]).weekday()]
+    return _tpl("customer/verified.html", request,
                 res=res, cfg=cfg, start_time=start_time, weekday_name=weekday_name)
 
 

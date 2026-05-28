@@ -40,6 +40,8 @@ def init_db() -> None:
         for sql in [
             "ALTER TABLE defaults ADD COLUMN course TEXT",
             "ALTER TABLE day_config ADD COLUMN course TEXT",
+            "ALTER TABLE reservation ADD COLUMN email_token TEXT",
+            "ALTER TABLE reservation ADD COLUMN token_expires_at TEXT",
         ]:
             try:
                 conn.execute(sql)
