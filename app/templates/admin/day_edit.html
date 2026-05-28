@@ -14,13 +14,14 @@
 {% else %}
 {% for res in reservations %}
 <div class="res-card" style="{% if res.status == 'pending_verify' %}border-color:#f9a825{% endif %}">
-  <strong>{{ res.name }} 様 / {{ res.num_people }}名</strong>
-  {% if res.status == 'pending_verify' %}
-  <span style="background:#fff8e1;color:#f57f17;border:1px solid #f9a825;
-               padding:2px 8px;border-radius:3px;font-size:0.75rem;margin-left:8px">
-    メール未確認
-  </span>
-  {% endif %}
+  <strong>
+    {{ res.name }} 様 / {{ res.num_people }}名
+    {% if res.status == 'pending_verify' %}
+    <span style="color:#c62828;font-weight:normal;font-size:0.85rem"> / メール未確認</span>
+    {% else %}
+    <span style="color:#388e3c;font-weight:normal;font-size:0.85rem"> / メール確認済み</span>
+    {% endif %}
+  </strong>
   {% if res.rotation == 2 %}
   <span style="background:#e8f0fe;padding:2px 6px;border-radius:3px;
                font-size:0.75rem;margin-left:8px">2回目</span>
@@ -29,6 +30,14 @@
     📞 {{ res.phone }} / ✉ {{ res.email }}
     {% if res.note %} / 備考: {{ res.note }}{% endif %}
   </div>
+  {% if res.status == 'pending_verify' and res.email_token %}
+  <div style="margin-top:4px">
+    <span style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;
+                 padding:2px 8px;border-radius:3px;font-family:monospace;font-size:0.82rem">
+      🔑 テスト用OTP: {{ res.email_token }}
+    </span>
+  </div>
+  {% endif %}
   <div class="actions" style="flex-wrap:wrap;align-items:center;gap:6px">
 
     {# ── 確定ボタン ── #}
@@ -66,10 +75,11 @@
       <input type="hidden" name="back_date" value="{{ target_date }}"
              style="width:auto;padding:0;border:none;margin:0">
       <input type="date" name="new_date" value="{{ target_date }}"
-             class="move-date" style="width:140px;padding:5px;margin:0">
+             class="move-date" style="width:150px;padding:5px;margin:0">
+      <span class="move-dow" style="font-size:0.82rem;color:#555;min-width:24px"></span>
       <select name="new_rotation" class="rot-select" style="width:auto;padding:5px;margin:0">
-        <option value="1">1回目</option>
-        <option value="2" {% if res.rotation != 2 %}{% endif %}>2回目</option>
+        <option value="1" class="rot-opt-1">1回目</option>
+        <option value="2" class="rot-opt-2">2回目</option>
       </select>
       <button class="btn btn-sm" type="submit">日付変更</button>
     </form>
@@ -135,28 +145,40 @@
 {% endif %}
 
 <script>
-// 日付変更フォーム: 日付を変えたら2回目の有無を確認してグレーアウト
 document.querySelectorAll('.move-date').forEach(function(dateInput) {
   var form   = dateInput.closest('.move-form');
   var rotSel = form.querySelector('.rot-select');
-  var opt2   = rotSel ? rotSel.querySelector('option[value="2"]') : null;
-  if (!opt2) return;
+  var opt1   = rotSel ? rotSel.querySelector('.rot-opt-1') : null;
+  var opt2   = rotSel ? rotSel.querySelector('.rot-opt-2') : null;
+  var dowSpan = form.querySelector('.move-dow');
 
-  function updateOpt2(dateVal) {
+  function updateConfig(dateVal) {
     if (!dateVal) return;
+
+    // 曜日をJSで計算して即時表示
+    if (dowSpan) {
+      var days = ['日','月','火','水','木','金','土'];
+      var d = new Date(dateVal + 'T00:00:00');
+      dowSpan.textContent = '(' + days[d.getDay()] + ')';
+    }
+
+    // APIで回転数・時間を取得
     fetch('/kmb/admin/api/day/' + dateVal + '/config')
       .then(function(r){ return r.json(); })
       .then(function(data) {
-        opt2.disabled = !data.has_rotation_2;
-        opt2.style.color = data.has_rotation_2 ? '' : '#bbb';
-        if (!data.has_rotation_2 && rotSel.value === '2') rotSel.value = '1';
+        if (opt1) opt1.textContent = '1回目' + (data.start_time_1 ? ' ' + data.start_time_1 + '-' : '');
+        if (opt2) {
+          opt2.textContent = '2回目' + (data.start_time_2 ? ' ' + data.start_time_2 + '-' : '');
+          opt2.disabled = !data.has_rotation_2;
+          opt2.style.color = data.has_rotation_2 ? '' : '#bbb';
+          if (!data.has_rotation_2 && rotSel.value === '2') rotSel.value = '1';
+        }
       })
       .catch(function(){});
   }
 
-  // 初期状態も確認
-  updateOpt2(dateInput.value);
-  dateInput.addEventListener('change', function(){ updateOpt2(this.value); });
+  updateConfig(dateInput.value);
+  dateInput.addEventListener('change', function(){ updateConfig(this.value); });
 });
 </script>
 {% endblock %}

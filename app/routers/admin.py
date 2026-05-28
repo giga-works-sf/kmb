@@ -132,10 +132,16 @@ async def day_edit_save(request: Request, target_date: str):
 
 @router.get("/api/day/{target_date}/config")
 async def day_config_api(target_date: str):
-    """Return whether this date has a 2nd rotation configured (for JS use)."""
+    """Return rotation config for this date (for JS use in move form)."""
     all_defaults = models.get_all_defaults()
     cfg = models.get_effective_config(target_date, all_defaults)
-    return JSONResponse({"has_rotation_2": cfg.get("start_time_2") is not None})
+    wd = _WEEKDAY_NAMES[date.fromisoformat(target_date).weekday()]
+    return JSONResponse({
+        "weekday":       wd,
+        "has_rotation_2": cfg.get("start_time_2") is not None,
+        "start_time_1":  cfg.get("start_time_1"),
+        "start_time_2":  cfg.get("start_time_2"),
+    })
 
 
 @router.post("/reservation/{rid}/activate", response_class=HTMLResponse)

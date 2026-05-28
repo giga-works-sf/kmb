@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}SMS認証{% endblock %}
+{% block content %}
+<h2>📱 SMS認証</h2>
+
+{% if resent %}
+<div class="msg-ok">認証コードを再送しました。</div>
+{% endif %}
+
+<div class="form-wrap" style="max-width:420px">
+  <p style="font-size:0.9rem;color:#333;line-height:1.7;margin-bottom:20px">
+    <strong>{{ masked_phone }}</strong> に6桁の認証コードを送信しました。<br>
+    コードを入力して予約を確定してください。
+  </p>
+
+  <p style="font-size:0.82rem;color:#c62828;font-weight:600;margin-bottom:16px">
+    ⏰ 有効期限：10分
+  </p>
+
+  {% if error %}
+  <div class="msg-err" style="margin-bottom:16px">{{ error }}</div>
+  {% endif %}
+
+  {% if not expired %}
+  <form method="post" action="/kmb/verify-sms/{{ rid }}">
+    <label>認証コード（6桁）<span style="color:red">*</span></label>
+    <input type="text" name="code" required
+           maxlength="6" pattern="[0-9]{6}"
+           inputmode="numeric" autocomplete="one-time-code"
+           placeholder="000000"
+           style="font-size:1.4rem;letter-spacing:0.3em;text-align:center">
+    <button class="btn btn-primary" type="submit"
+            style="margin-top:16px;width:100%">
+      予約を確定する
+    </button>
+  </form>
+  {% endif %}
+
+  <form method="post" action="/kmb/verify-sms/{{ rid }}/resend"
+        style="margin-top:16px">
+    <button type="submit"
+            style="background:none;border:none;color:#1a73e8;cursor:pointer;
+                   font-size:0.88rem;padding:0;text-decoration:underline">
+      コードを再送する
+    </button>
+  </form>
+</div>
+
+<p style="margin-top:16px;font-size:0.82rem;color:#888">
+  SMSが届かない場合は迷惑メールフォルダをご確認いただくか、<br>
+  お電話にてお問い合わせください。
+</p>
+{% endblock %}

@@ -39,11 +39,26 @@
     <label>代表者名 <span style="color:red">*</span></label>
     <input type="text" name="name" required placeholder="山田 太郎">
 
-    <label>電話番号 <span style="color:red">*</span></label>
-    <input type="tel" name="phone" required placeholder="090-0000-0000">
+    <label>電話番号 <span style="color:red">*</span><span style="font-size:0.78rem;color:#888;font-weight:normal;margin-left:6px">SMS認証コードを送信します</span></label>
+    <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+      <select name="phone_country" style="width:auto;padding:8px 6px;margin:0;font-size:0.9rem">
+        <option value="+81" selected>🇯🇵 +81（日本）</option>
+        <option value="+1">🇺🇸 +1（米国/カナダ）</option>
+        <option value="+44">🇬🇧 +44（英国）</option>
+        <option value="+86">🇨🇳 +86（中国）</option>
+        <option value="+82">🇰🇷 +82（韓国）</option>
+        <option value="+886">🇹🇼 +886（台湾）</option>
+        <option value="+852">🇭🇰 +852（香港）</option>
+        <option value="+33">🇫🇷 +33（フランス）</option>
+        <option value="+49">🇩🇪 +49（ドイツ）</option>
+        <option value="+61">🇦🇺 +61（オーストラリア）</option>
+      </select>
+      <input type="tel" name="phone" required placeholder="090-0000-0000"
+             style="flex:1;margin:0">
+    </div>
 
-    <label>メールアドレス <span style="color:red">*</span></label>
-    <input type="email" name="email" required placeholder="example@email.com">
+    <label>メールアドレス（任意）</label>
+    <input type="email" name="email" placeholder="example@email.com">
 
     <label>備考（任意）</label>
     <textarea name="note" placeholder="アレルギー・その他ご要望など"></textarea>

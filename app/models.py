@@ -194,12 +194,11 @@ def _weekday_cap(conn, date_str: str, rotation: int, dc: Optional[dict]) -> int:
 def create_reservation(
     date: str, rotation: int, name: str, num_people: int,
     phone: str, email: str, note: Optional[str],
-) -> Optional[tuple[int, str]]:
+) -> Optional[int]:
     """Insert reservation (pending_verify) inside a transaction with re-check.
-    Returns (id, email_token) or None if capacity exceeded."""
-    token = secrets.token_urlsafe(32)
-    expires = (datetime.now(timezone.utc) + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
-
+    Returns reservation id or None if capacity exceeded.
+    Phone should be in E.164 format (+819012345678).
+    OTP is stored separately via store_sms_otp()."""
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
         dc_row = conn.execute(
@@ -222,14 +221,54 @@ def create_reservation(
         cur = conn.execute(
             "INSERT INTO reservation "
             "(date,rotation,name,num_people,phone,email,note,"
-            "status,email_token,token_expires_at,created_at,updated_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "status,created_at,updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?)",
             (date, rotation, name, num_people, phone, email, note or None,
-             "pending_verify", token, expires, ts, ts),
+             "pending_verify", ts, ts),
         )
         rid = cur.lastrowid
         conn.commit()
-        return rid, token
+        return rid
+
+
+def store_sms_otp(rid: int, phone_e164: str, dev_code: Optional[str]) -> None:
+    """Store E.164 phone and OTP info after reservation creation.
+    dev_code is the plaintext OTP in dev mode (None in production).
+    Sets token_expires_at to 10 minutes from now."""
+    expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE reservation SET phone=?, email_token=?, token_expires_at=?, updated_at=? "
+            "WHERE id=?",
+            (phone_e164, dev_code, expires, now(), rid),
+        )
+        conn.commit()
+
+
+def activate_reservation(rid: int) -> Optional[dict]:
+    """Activate a pending_verify reservation after successful SMS OTP verification.
+    Returns the activated reservation dict, or None if not found / expired."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM reservation WHERE id=? AND status='pending_verify'", (rid,)
+        ).fetchone()
+        if not row:
+            return None
+        res = dict(row)
+        if res.get("token_expires_at"):
+            expires = datetime.strptime(
+                res["token_expires_at"], "%Y-%m-%d %H:%M:%S"
+            ).replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > expires:
+                return None
+        conn.execute(
+            "UPDATE reservation SET status='active', email_token=NULL, "
+            "token_expires_at=NULL, updated_at=? WHERE id=?",
+            (now(), rid),
+        )
+        conn.commit()
+        res["status"] = "active"
+        return res
 
 
 def activate_by_token(token: str) -> Optional[dict]:

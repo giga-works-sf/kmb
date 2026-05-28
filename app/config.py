@@ -19,6 +19,11 @@ ADMIN_EMAIL      = os.getenv("ADMIN_EMAIL", "")
 SHOP_NAME        = os.getenv("SHOP_NAME", "KanpAI")
 APP_BASE_URL     = os.getenv("APP_BASE_URL", "http://localhost:8000")
 
+# Twilio SMS 認証 (.env に記載)
+TWILIO_ACCOUNT_SID      = os.getenv("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN       = os.getenv("TWILIO_AUTH_TOKEN", "")
+TWILIO_VERIFY_SERVICE_SID = os.getenv("TWILIO_VERIFY_SERVICE_SID", "")
+
 ROOT_DIR   = Path(__file__).parent.parent
 OUTBOX_DIR = ROOT_DIR / "outbox"
 DB_PATH    = ROOT_DIR / "data.db"
