@@ -91,6 +91,77 @@ def _customer_cell(d: date, cfg: dict, inventory: dict,
     return cell
 
 
+_WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
+
+
+def build_admin_day_list(year: int, month: int) -> list[dict]:
+    """Return a flat list of day dicts with per-seat reservation details."""
+    today = date.today()
+    all_defaults = models.get_all_defaults()
+    day_cfgs     = models.get_all_day_configs()
+    res_by_date  = models.list_reservations_for_month(year, month)
+
+    days = []
+    for day_num in range(1, cal_mod.monthrange(year, month)[1] + 1):
+        d     = date(year, month, day_num)
+        d_str = d.isoformat()
+        cfg   = models.get_effective_config(d_str, all_defaults, day_cfgs)
+
+        all_res = res_by_date.get(d_str, [])
+        active  = [r for r in all_res if r["status"] == "active"]
+        pending = [r for r in all_res if r["status"] == "pending_verify"]
+
+        rotations = []
+        if not cfg["is_closed"]:
+            for rot in (1, 2):
+                t = cfg["start_time_1"] if rot == 1 else cfg["start_time_2"]
+                c = cfg["capacity_1"]   if rot == 1 else cfg["capacity_2"]
+                if t is None or not c:
+                    continue
+
+                rot_active  = [r for r in active  if r["rotation"] == rot]
+                rot_pending = [r for r in pending if r["rotation"] == rot]
+
+                # Expand reservations to individual seat rows
+                seats: list[dict] = []
+                seat_num = 0
+                for res in rot_active:
+                    seat_num += 1
+                    seats.append({
+                        "seat_num": seat_num, "type": "occupied",
+                        "name": res["name"], "is_leader": True,
+                        "num_people": res["num_people"],
+                        "confirmed": bool(res["confirmed"]),
+                        "res_id": res["id"],
+                    })
+                    for _ in range(res["num_people"] - 1):
+                        seat_num += 1
+                        seats.append({
+                            "seat_num": seat_num, "type": "occupied",
+                            "name": res["name"], "is_leader": False,
+                            "confirmed": bool(res["confirmed"]),
+                            "res_id": res["id"],
+                        })
+                for _ in range(max(0, c - seat_num)):
+                    seat_num += 1
+                    seats.append({"seat_num": seat_num, "type": "empty"})
+
+                rotations.append({
+                    "rotation": rot, "time": t, "capacity": c,
+                    "seats": seats, "pending": rot_pending,
+                })
+
+        days.append({
+            "date": d_str,
+            "weekday": _WEEKDAY_NAMES[d.weekday()],
+            "is_past":   d < today,
+            "is_today":  d == today,
+            "is_closed": cfg["is_closed"],
+            "rotations": rotations,
+        })
+    return days
+
+
 def build_admin_calendar(year: int, month: int) -> list[list[Optional[dict]]]:
     all_defaults = models.get_all_defaults()
     day_cfgs     = models.get_all_day_configs()

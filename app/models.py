@@ -302,6 +302,26 @@ def get_reservation(rid: int) -> Optional[dict]:
     return dict(row) if row else None
 
 
+def list_reservations_for_month(year: int, month: int) -> dict[str, list[dict]]:
+    """Returns {date_str: [reservations]} for all active+pending_verify in a month."""
+    import calendar as _cal
+    last_day = _cal.monthrange(year, month)[1]
+    start = f"{year:04d}-{month:02d}-01"
+    end   = f"{year:04d}-{month:02d}-{last_day:02d}"
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM reservation WHERE date BETWEEN ? AND ? "
+            "AND status IN ('active','pending_verify') "
+            "ORDER BY date, rotation, created_at",
+            (start, end),
+        ).fetchall()
+    result: dict[str, list[dict]] = {}
+    for row in rows:
+        d = dict(row)
+        result.setdefault(d["date"], []).append(d)
+    return result
+
+
 def list_reservations_for_date(date: str) -> list[dict]:
     """Returns active + pending_verify reservations for admin view."""
     with get_conn() as conn:

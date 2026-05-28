@@ -8,20 +8,38 @@
 {% if msg %}<div class="msg-ok">{{ msg }}</div>{% endif %}
 {% if error %}<div class="msg-err">{{ error }}</div>{% endif %}
 
+{# ── マクロ: 削除・日付変更フォーム（active/pending共通） ── #}
+{% macro action_forms(res) %}
+<form method="post" action="/kmb/admin/reservation/{{ res.id }}/cancel"
+      onsubmit="return confirm('{{ res.name }} 様の予約を削除しますか？')">
+  <input type="hidden" name="back_date" value="{{ target_date }}"
+         style="width:auto;padding:0;border:none;margin:0">
+  <button class="btn btn-danger" type="submit">削除</button>
+</form>
+<form method="post" action="/kmb/admin/reservation/{{ res.id }}/move"
+      class="move-form" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+  <input type="hidden" name="back_date" value="{{ target_date }}"
+         style="width:auto;padding:0;border:none;margin:0">
+  <input type="date" name="new_date" value="{{ target_date }}"
+         class="move-date" style="width:150px;padding:5px;margin:0">
+  <span class="move-dow" style="font-size:0.82rem;color:#555;min-width:24px"></span>
+  <select name="new_rotation" class="rot-select" style="width:auto;padding:5px;margin:0">
+    <option value="1" class="rot-opt-1">1回目</option>
+    <option value="2" class="rot-opt-2">2回目</option>
+  </select>
+  <button class="btn btn-sm" type="submit">日付変更</button>
+</form>
+{% endmacro %}
+
+{# ── 予約一覧（active のみ） ── #}
+{% set active_res = reservations | selectattr("status", "equalto", "active") | list %}
 <h3 style="font-size:1rem">予約一覧</h3>
-{% if not reservations %}
+{% if not active_res %}
 <p style="color:#888;font-size:0.9rem">予約はありません</p>
 {% else %}
-{% for res in reservations %}
-<div class="res-card" style="{% if res.status == 'pending_verify' %}border-color:#f9a825{% endif %}">
-  <strong>
-    {{ res.name }} 様 / {{ res.num_people }}名
-    {% if res.status == 'pending_verify' %}
-    <span style="color:#c62828;font-weight:normal;font-size:0.85rem"> / メール未確認</span>
-    {% else %}
-    <span style="color:#388e3c;font-weight:normal;font-size:0.85rem"> / メール確認済み</span>
-    {% endif %}
-  </strong>
+{% for res in active_res %}
+<div class="res-card">
+  <strong>{{ res.name }} 様 / {{ res.num_people }}名</strong>
   {% if res.rotation == 2 %}
   <span style="background:#e8f0fe;padding:2px 6px;border-radius:3px;
                font-size:0.75rem;margin-left:8px">2回目</span>
@@ -30,7 +48,38 @@
     📞 {{ res.phone }} / ✉ {{ res.email }}
     {% if res.note %} / 備考: {{ res.note }}{% endif %}
   </div>
-  {% if res.status == 'pending_verify' and res.email_token %}
+  <div class="actions" style="flex-wrap:wrap;align-items:center;gap:6px">
+    <form method="post" action="/kmb/admin/reservation/{{ res.id }}/confirm">
+      <input type="hidden" name="back_date" value="{{ target_date }}">
+      <input type="hidden" name="confirmed" value="{{ 0 if res.confirmed else 1 }}"
+             style="width:auto;padding:0;border:none;margin:0">
+      <button class="btn btn-sm" type="submit"
+              {% if res.confirmed %}style="background:#43a047;color:#fff;border:none"{% endif %}>
+        {% if res.confirmed %}未確定に戻す{% else %}確定{% endif %}
+      </button>
+    </form>
+    {{ action_forms(res) }}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{# ── SMS未確認一覧（pending_verify のみ） ── #}
+{% set pending_res = reservations | selectattr("status", "equalto", "pending_verify") | list %}
+{% if pending_res %}
+<h3 style="font-size:1rem;margin-top:28px;color:#e65100">SMS未確認一覧</h3>
+{% for res in pending_res %}
+<div class="res-card" style="border-color:#f9a825">
+  <strong>{{ res.name }} 様 / {{ res.num_people }}名</strong>
+  {% if res.rotation == 2 %}
+  <span style="background:#e8f0fe;padding:2px 6px;border-radius:3px;
+               font-size:0.75rem;margin-left:8px">2回目</span>
+  {% endif %}
+  <div class="res-meta">
+    📞 {{ res.phone }} / ✉ {{ res.email }}
+    {% if res.note %} / 備考: {{ res.note }}{% endif %}
+  </div>
+  {% if res.email_token %}
   <div style="margin-top:4px">
     <span style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;
                  padding:2px 8px;border-radius:3px;font-family:monospace;font-size:0.82rem">
@@ -39,51 +88,13 @@
   </div>
   {% endif %}
   <div class="actions" style="flex-wrap:wrap;align-items:center;gap:6px">
-
-    {# ── 確定ボタン ── #}
-    {% if res.status == 'pending_verify' %}
     <form method="post" action="/kmb/admin/reservation/{{ res.id }}/activate">
       <input type="hidden" name="back_date" value="{{ target_date }}"
              style="width:auto;padding:0;border:none;margin:0">
       <button class="btn btn-sm" type="submit"
-              style="background:#43a047;color:#fff;border:none">
-        ✔ 確定
-      </button>
+              style="background:#43a047;color:#fff;border:none">確定</button>
     </form>
-    {% else %}
-    <form method="post" action="/kmb/admin/reservation/{{ res.id }}/confirm">
-      <input type="hidden" name="back_date" value="{{ target_date }}">
-      <input type="hidden" name="confirmed" value="{{ 0 if res.confirmed else 1 }}"
-             style="width:auto;padding:0;border:none;margin:0">
-      <button class="btn btn-sm" type="submit">
-        {% if res.confirmed %}✅ 確認済 → 未確認に戻す{% else %}○ 未確認 → 確認済にする{% endif %}
-      </button>
-    </form>
-    {% endif %}
-
-    {# ── 削除ボタン ── #}
-    <form method="post" action="/kmb/admin/reservation/{{ res.id }}/cancel"
-          onsubmit="return confirm('{{ res.name }} 様の予約を削除しますか？')">
-      <input type="hidden" name="back_date" value="{{ target_date }}"
-             style="width:auto;padding:0;border:none;margin:0">
-      <button class="btn btn-danger" type="submit">削除</button>
-    </form>
-
-    {# ── 日付変更フォーム ── #}
-    <form method="post" action="/kmb/admin/reservation/{{ res.id }}/move"
-          class="move-form" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
-      <input type="hidden" name="back_date" value="{{ target_date }}"
-             style="width:auto;padding:0;border:none;margin:0">
-      <input type="date" name="new_date" value="{{ target_date }}"
-             class="move-date" style="width:150px;padding:5px;margin:0">
-      <span class="move-dow" style="font-size:0.82rem;color:#555;min-width:24px"></span>
-      <select name="new_rotation" class="rot-select" style="width:auto;padding:5px;margin:0">
-        <option value="1" class="rot-opt-1">1回目</option>
-        <option value="2" class="rot-opt-2">2回目</option>
-      </select>
-      <button class="btn btn-sm" type="submit">日付変更</button>
-    </form>
-
+    {{ action_forms(res) }}
   </div>
 </div>
 {% endfor %}

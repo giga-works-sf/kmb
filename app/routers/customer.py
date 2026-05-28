@@ -88,7 +88,7 @@ async def booking_submit(
     name: str           = Form(...),
     phone_country: str  = Form("+81"),
     phone: str          = Form(...),
-    email: str          = Form(""),
+    email: str          = Form(...),
     note: str           = Form(""),
 ):
     today = date.today()

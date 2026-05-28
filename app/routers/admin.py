@@ -35,14 +35,14 @@ async def admin_home(request: Request):
 
 @router.get("/calendar/{year}/{month}", response_class=HTMLResponse)
 async def admin_calendar(request: Request, year: int, month: int):
-    weeks = services.build_admin_calendar(year, month)
+    days  = services.build_admin_day_list(year, month)
     nav   = services.month_nav(year, month)
     cal_start = date.fromisoformat(CALENDAR_START)
     cal_end   = date.fromisoformat(CALENDAR_END)
     prev_d = date(nav["prev_year"], nav["prev_month"], 1)
     next_d = date(nav["next_year"], nav["next_month"], 1)
     return _tpl("admin/calendar.html", request,
-                weeks=weeks, nav=nav,
+                days=days, nav=nav,
                 show_prev=prev_d >= date(cal_start.year, cal_start.month, 1),
                 show_next=next_d <= date(cal_end.year, cal_end.month, 1),
                 year=year, month=month)
