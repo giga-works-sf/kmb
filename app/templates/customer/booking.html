@@ -19,7 +19,7 @@
       {% for r in rotations %}
       <option value="{{ r.rotation }}"
         {% if r.rotation == selected_rotation %}selected{% endif %}>
-        {{ r.time }}〜（残席{{ r.remaining }}名）
+        {{ r.time }}〜（残{{ r.remaining }}席）
       </option>
       {% endfor %}
     </select>

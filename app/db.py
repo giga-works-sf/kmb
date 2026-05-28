@@ -57,6 +57,40 @@ def init_db() -> None:
         except sqlite3.OperationalError:
             pass
 
+        # ── マイグレーション: reservation.status CHECK に pending_verify を追加 ──
+        # SQLite は CHECK 制約を ALTER で変更できないためテーブルを再作成する
+        res_schema = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='reservation'"
+        ).fetchone()
+        if res_schema and "pending_verify" not in (res_schema[0] or ""):
+            conn.executescript("""
+                ALTER TABLE reservation RENAME TO _reservation_old;
+                CREATE TABLE reservation (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date        TEXT NOT NULL,
+                    rotation    INTEGER NOT NULL CHECK (rotation IN (1, 2)),
+                    name        TEXT NOT NULL,
+                    num_people  INTEGER NOT NULL CHECK (num_people >= 1),
+                    phone       TEXT NOT NULL,
+                    email       TEXT NOT NULL,
+                    note        TEXT,
+                    confirmed   INTEGER NOT NULL DEFAULT 0,
+                    status      TEXT NOT NULL DEFAULT 'pending_verify'
+                                CHECK (status IN ('active', 'cancelled', 'pending_verify')),
+                    email_token       TEXT,
+                    token_expires_at  TEXT,
+                    created_at  TEXT NOT NULL,
+                    updated_at  TEXT NOT NULL
+                );
+                INSERT INTO reservation
+                    SELECT id, date, rotation, name, num_people, phone, email, note,
+                           confirmed, status, email_token, token_expires_at,
+                           created_at, updated_at
+                    FROM _reservation_old;
+                DROP TABLE _reservation_old;
+                CREATE INDEX IF NOT EXISTS idx_res_date_status ON reservation(date, status);
+            """)
+
         # ── シード ────────────────────────────────────────────────────────────
         if conn.execute("SELECT COUNT(*) FROM defaults").fetchone()[0] == 0:
             conn.execute(_SEED_DEFAULTS, {"ts": now()})
