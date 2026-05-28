@@ -7,39 +7,92 @@
 <h2>デフォルト設定</h2>
 {% if msg %}<div class="msg-ok">{{ msg }}</div>{% endif %}
 
-<div class="form-wrap" style="max-width:560px">
-  <form method="post" action="/kmb/admin/settings">
-    <label>コース1</label>
-    <input type="text" name="course_1" value="{{ defaults.course_1 or '' }}">
-    <label>コース2</label>
-    <input type="text" name="course_2" value="{{ defaults.course_2 or '' }}">
-    <label>コース3</label>
-    <input type="text" name="course_3" value="{{ defaults.course_3 or '' }}">
+<form method="post" action="/kmb/admin/settings">
 
-    <label>デフォルト開始時間（1回転目）</label>
-    <select name="start_time_1">
-      {% for s in slots %}
-      <option value="{{ s }}"
-        {% if defaults.start_time_1 == s %}selected{% endif %}>{{ s }}</option>
-      {% endfor %}
-    </select>
+  {# ── コース（広幅テキストエリア）── #}
+  <div style="display:grid;grid-template-columns:120px 1fr;gap:8px 16px;
+              align-items:start;max-width:800px;margin-bottom:24px">
+    <label style="padding-top:8px;font-weight:600;font-size:0.88rem">コース内容</label>
+    <textarea name="course" rows="4"
+              style="width:100%;padding:8px 10px;border:1px solid #ccc;
+                     border-radius:4px;font-family:inherit;font-size:0.9rem;
+                     resize:vertical">{{ all_defaults.course or '' }}</textarea>
+  </div>
 
-    <label>デフォルト席数（1回転目）</label>
-    <input type="number" name="capacity_1" min="1" value="{{ defaults.capacity_1 }}">
+  {# ── 曜日別設定テーブル ── #}
+  <h3 style="font-size:1rem;margin-bottom:10px">曜日別設定</h3>
+  <div style="overflow-x:auto;margin-bottom:24px">
+    <table style="border-collapse:collapse;width:100%;min-width:580px">
+      <thead>
+        <tr style="background:#444;color:#fff">
+          <th style="padding:7px 10px;text-align:left;font-size:0.82rem">曜日</th>
+          <th style="padding:7px 10px;text-align:center;font-size:0.82rem">定休日</th>
+          <th style="padding:7px 10px;font-size:0.82rem">開始時間1</th>
+          <th style="padding:7px 8px;font-size:0.82rem">席数1</th>
+          <th style="padding:7px 10px;font-size:0.82rem">開始時間2</th>
+          <th style="padding:7px 8px;font-size:0.82rem">席数2</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i, wd_name in [(0,'月'),(1,'火'),(2,'水'),(3,'木'),(4,'金'),(5,'土'),(6,'日')] %}
+        {% set wd = all_defaults.weekday.get(i, {}) %}
+        <tr style="background:{% if loop.index is odd %}#fafafa{% else %}#fff{% endif %}">
+          <td style="padding:6px 10px;font-weight:600">{{ wd_name }}</td>
+          <td style="padding:6px 10px;text-align:center">
+            <input type="checkbox" name="wd_{{ i }}_is_closed" value="1"
+                   {% if wd.get('is_closed') %}checked{% endif %}>
+          </td>
+          <td style="padding:4px 8px">
+            <select name="wd_{{ i }}_start_time_1"
+                    style="padding:4px 6px;font-size:0.85rem">
+              {% for s in slots %}
+              <option value="{{ s }}"
+                {% if wd.get('start_time_1') == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td style="padding:4px 8px">
+            <input type="number" name="wd_{{ i }}_capacity_1" min="1"
+                   style="width:58px;padding:4px 6px;font-size:0.85rem"
+                   value="{{ wd.get('capacity_1') or '' }}">
+          </td>
+          <td style="padding:4px 8px">
+            <select name="wd_{{ i }}_start_time_2"
+                    style="padding:4px 6px;font-size:0.85rem">
+              <option value="">— なし —</option>
+              {% for s in slots %}
+              <option value="{{ s }}"
+                {% if wd.get('start_time_2') == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td style="padding:4px 8px">
+            <input type="number" name="wd_{{ i }}_capacity_2" min="1"
+                   style="width:58px;padding:4px 6px;font-size:0.85rem"
+                   value="{{ wd.get('capacity_2') or '' }}"
+                   placeholder="—">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-    <button class="btn btn-primary" type="submit" style="margin-top:20px">
-      保存（未来の空き日に反映）
-    </button>
-  </form>
+  <button class="btn btn-primary" type="submit">
+    保存（予約のない未来日に反映）
+  </button>
   <p style="font-size:0.8rem;color:#888;margin-top:8px">
     ※ 予約が入っている日付は現行の設定を維持します。
   </p>
-</div>
+
+</form>
 
 <hr style="margin:32px 0">
-<h3 style="font-size:1rem;margin-bottom:8px">休日設定カレンダー</h3>
+
+{# ── 特定日の休日設定カレンダー ── #}
+<h3 style="font-size:1rem;margin-bottom:8px">特定日の休日設定</h3>
 <p style="font-size:0.82rem;color:#666;margin-bottom:12px">
-  日付をクリックして休日をトグル設定できます。予約のある日は変更できません。
+  曜日設定に関係なく、特定の日だけ休日にしたい場合にクリックします。
 </p>
 
 <div class="cal-nav">
@@ -69,16 +122,18 @@
         <input type="hidden" name="is_closed" value="{{ 0 if cell.is_closed else 1 }}">
         <input type="hidden" name="year" value="{{ year }}">
         <input type="hidden" name="month" value="{{ month }}">
-        <button type="submit" style="background:none;border:none;cursor:pointer;width:100%;padding:0">
+        <button type="submit"
+                style="background:none;border:none;cursor:pointer;width:100%;padding:0">
           <div class="day-num">{{ cell.day }}</div>
-          <div style="font-size:0.72rem;color:{% if cell.is_closed %}#c62828{% else %}#1a73e8{% endif %}">
+          <div style="font-size:0.72rem;
+                      color:{% if cell.is_closed %}#c62828{% else %}#1a73e8{% endif %}">
             {% if cell.is_closed %}休{% else %}○{% endif %}
           </div>
         </button>
       </form>
       {% else %}
       <div class="day-num">{{ cell.day }}</div>
-      <div style="font-size:0.72rem;color:#888" title="予約あり">
+      <div style="font-size:0.72rem;color:#888">
         {% if cell.is_closed %}休{% else %}予{% endif %}
       </div>
       {% endif %}
@@ -90,6 +145,6 @@
   </tbody>
 </table>
 <p style="font-size:0.78rem;color:#888;margin-top:8px">
-  「休」= 定休日 / 「予」= 予約あり（変更不可） / 「○」= 通常営業日（クリックで休日設定）
+  「休」= 休日設定済 / 「予」= 予約あり（変更不可） / 「○」= クリックで休日設定
 </p>
 {% endblock %}

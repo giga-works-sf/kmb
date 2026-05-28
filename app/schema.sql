@@ -1,20 +1,25 @@
 CREATE TABLE IF NOT EXISTS defaults (
-    id          INTEGER PRIMARY KEY DEFAULT 1,
-    course_1    TEXT,
-    course_2    TEXT,
-    course_3    TEXT,
-    start_time_1 TEXT NOT NULL DEFAULT '19:00',
-    capacity_1  INTEGER NOT NULL DEFAULT 6,
-    updated_at  TEXT NOT NULL
+    id         INTEGER PRIMARY KEY DEFAULT 1,
+    course     TEXT,
+    updated_at TEXT NOT NULL
+);
+
+-- 曜日ごとのデフォルト設定 (0=月, 1=火, ..., 6=日)
+CREATE TABLE IF NOT EXISTS weekday_defaults (
+    weekday      INTEGER PRIMARY KEY,
+    is_closed    INTEGER NOT NULL DEFAULT 0,
+    start_time_1 TEXT,
+    capacity_1   INTEGER,
+    start_time_2 TEXT,
+    capacity_2   INTEGER,
+    updated_at   TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS day_config (
     date               TEXT PRIMARY KEY,
     is_closed          INTEGER NOT NULL DEFAULT 0,
     is_manual_override INTEGER NOT NULL DEFAULT 0,
-    course_1           TEXT,
-    course_2           TEXT,
-    course_3           TEXT,
+    course             TEXT,
     start_time_1       TEXT,
     capacity_1         INTEGER,
     start_time_2       TEXT,

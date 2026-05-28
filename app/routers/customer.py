@@ -13,7 +13,6 @@ from app.config import SHOP_NAME, NOTE_MAX_LEN, CALENDAR_START, CALENDAR_END
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
-
 _COMMON = {"shop_name": SHOP_NAME}
 
 
@@ -56,8 +55,8 @@ async def booking_form(request: Request, target_date: str,
     if d < earliest or d > latest:
         return RedirectResponse("/kmb/")
 
-    defaults = models.get_defaults()
-    cfg = models.get_effective_config(target_date, defaults)
+    all_defaults = models.get_all_defaults()
+    cfg = models.get_effective_config(target_date, all_defaults)
 
     if cfg["is_closed"]:
         return RedirectResponse("/kmb/")
@@ -111,8 +110,8 @@ async def booking_submit(
     if len(note) > NOTE_MAX_LEN:
         errors.append(f"備考は{NOTE_MAX_LEN}文字以内で入力してください")
 
-    defaults = models.get_defaults()
-    cfg = models.get_effective_config(target_date, defaults)
+    all_defaults = models.get_all_defaults()
+    cfg = models.get_effective_config(target_date, all_defaults)
 
     if errors:
         rotations = _available_rotations(target_date, cfg)
@@ -149,8 +148,8 @@ async def booking_complete(request: Request, rid: int):
     res = models.get_reservation(rid)
     if not res or res["status"] != "active":
         return RedirectResponse("/kmb/")
-    defaults = models.get_defaults()
-    cfg = models.get_effective_config(res["date"], defaults)
+    all_defaults = models.get_all_defaults()
+    cfg = models.get_effective_config(res["date"], all_defaults)
     start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
     return _tpl("customer/complete.html", request,
                 res=res, cfg=cfg, start_time=start_time)

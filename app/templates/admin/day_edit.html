@@ -10,20 +10,10 @@
 
 <div class="form-wrap" style="max-width:560px">
   <form method="post" action="/kmb/admin/day/{{ target_date }}">
-    <label style="display:flex;align-items:center;gap:8px;margin-top:0;font-weight:normal">
-      <input type="checkbox" name="is_closed" value="1"
-             {% if cfg.is_closed %}checked{% endif %}> 定休日にする
-    </label>
 
-    <label>コース1</label>
-    <input type="text" name="course_1" value="{{ cfg.course_1 or '' }}"
-           placeholder="{{ defaults.course_1 or '' }}（デフォルト）">
-    <label>コース2</label>
-    <input type="text" name="course_2" value="{{ cfg.course_2 or '' }}"
-           placeholder="{{ defaults.course_2 or '（空欄）' }}（デフォルト）">
-    <label>コース3</label>
-    <input type="text" name="course_3" value="{{ cfg.course_3 or '' }}"
-           placeholder="{{ defaults.course_3 or '（空欄）' }}（デフォルト）">
+    <label>コース内容（空欄でデフォルト値を使用）</label>
+    <textarea name="course" rows="3"
+              style="resize:vertical">{{ cfg.course or '' }}</textarea>
 
     <label>開始時間1（1回転目）</label>
     <select name="start_time_1">
@@ -35,7 +25,7 @@
 
     <label>席数1</label>
     <input type="number" name="capacity_1" min="1"
-           value="{{ cfg.capacity_1 or defaults.capacity_1 }}">
+           value="{{ cfg.capacity_1 or '' }}">
 
     <label>開始時間2（2回転目、空欄で1回転のみ）</label>
     <select name="start_time_2">
@@ -50,6 +40,15 @@
     <input type="number" name="capacity_2" min="1"
            value="{{ cfg.capacity_2 or '' }}" placeholder="2回転設定時のみ">
 
+    <hr style="margin:20px 0;border:none;border-top:1px solid #e0e0e0">
+
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;
+                  margin-top:0;color:#c62828">
+      <input type="checkbox" name="is_closed" value="1"
+             {% if cfg.is_closed %}checked{% endif %}>
+      この日を定休日にする（予約がある場合は設定できません）
+    </label>
+
     <button class="btn btn-primary" type="submit" style="margin-top:20px">保存</button>
   </form>
 </div>
@@ -62,22 +61,22 @@
 <div class="res-card">
   <strong>{{ res.name }} 様 / {{ res.num_people }}名</strong>
   {% if res.rotation == 2 %}
-  <span style="background:#e8f0fe;padding:2px 6px;border-radius:3px;font-size:0.75rem;margin-left:8px">2回転</span>
+  <span style="background:#e8f0fe;padding:2px 6px;border-radius:3px;
+               font-size:0.75rem;margin-left:8px">2回転</span>
   {% endif %}
   <div class="res-meta">
     📞 {{ res.phone }} / ✉ {{ res.email }}
     {% if res.note %} / 備考: {{ res.note }}{% endif %}
   </div>
   <div class="actions">
-    <!-- Confirm toggle -->
-    <form method="post" action="/kmb/admin/reservation/{{ res.id }}/confirm" style="display:inline">
+    <form method="post" action="/kmb/admin/reservation/{{ res.id }}/confirm"
+          style="display:inline">
       <input type="hidden" name="back_date" value="{{ target_date }}">
       <input type="hidden" name="confirmed" value="{{ 0 if res.confirmed else 1 }}">
       <button class="btn btn-sm" type="submit">
         {% if res.confirmed %}✅ 確認済 → 未確認に戻す{% else %}○ 未確認 → 確認済にする{% endif %}
       </button>
     </form>
-    <!-- Move -->
     <form method="post" action="/kmb/admin/reservation/{{ res.id }}/move"
           style="display:inline-flex;gap:4px;align-items:center">
       <input type="hidden" name="back_date" value="{{ target_date }}">
@@ -89,7 +88,6 @@
       </select>
       <button class="btn btn-sm" type="submit">移動</button>
     </form>
-    <!-- Cancel -->
     <form method="post" action="/kmb/admin/reservation/{{ res.id }}/cancel"
           style="display:inline"
           onsubmit="return confirm('{{ res.name }} 様の予約を削除しますか？')">

@@ -1,31 +1,56 @@
 """All SQLite CRUD operations. No business logic — just read/write."""
 from __future__ import annotations
+from datetime import date as _date_cls
 from typing import Optional
 from app.db import get_conn, now
 
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 
-def get_defaults() -> dict:
+def get_all_defaults() -> dict:
+    """Returns {"course": str|None, "weekday": {0: {...}, ..., 6: {...}}}"""
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM defaults WHERE id=1").fetchone()
-    return dict(row)
+        wd_rows = conn.execute(
+            "SELECT * FROM weekday_defaults ORDER BY weekday"
+        ).fetchall()
+    return {
+        "course": dict(row)["course"] if row else None,
+        "weekday": {r["weekday"]: dict(r) for r in wd_rows},
+    }
 
 
-def save_defaults(
-    course_1: Optional[str],
-    course_2: Optional[str],
-    course_3: Optional[str],
-    start_time_1: str,
-    capacity_1: int,
-) -> None:
+def save_defaults(course: Optional[str]) -> None:
     with get_conn() as conn:
         conn.execute(
-            "UPDATE defaults SET course_1=?,course_2=?,course_3=?,"
-            "start_time_1=?,capacity_1=?,updated_at=? WHERE id=1",
-            (course_1 or None, course_2 or None, course_3 or None,
-             start_time_1, capacity_1, now()),
+            "UPDATE defaults SET course=?, updated_at=? WHERE id=1",
+            (course or None, now()),
         )
+        conn.commit()
+
+
+def save_weekday_defaults(settings: list[dict]) -> None:
+    """Upsert 7 weekday rows. Each dict: weekday, is_closed, start_time_1,
+    capacity_1, start_time_2, capacity_2."""
+    with get_conn() as conn:
+        ts = now()
+        for s in settings:
+            conn.execute(
+                """INSERT INTO weekday_defaults
+                   (weekday, is_closed, start_time_1, capacity_1,
+                    start_time_2, capacity_2, updated_at)
+                   VALUES (?,?,?,?,?,?,?)
+                   ON CONFLICT(weekday) DO UPDATE SET
+                     is_closed=excluded.is_closed,
+                     start_time_1=excluded.start_time_1,
+                     capacity_1=excluded.capacity_1,
+                     start_time_2=excluded.start_time_2,
+                     capacity_2=excluded.capacity_2,
+                     updated_at=excluded.updated_at""",
+                (s["weekday"], s["is_closed"], s.get("start_time_1"),
+                 s.get("capacity_1"), s.get("start_time_2") or None,
+                 s.get("capacity_2"), ts),
+            )
         conn.commit()
 
 
@@ -49,9 +74,7 @@ def upsert_day_config(
     date: str,
     is_closed: int = 0,
     is_manual_override: int = 1,
-    course_1: Optional[str] = None,
-    course_2: Optional[str] = None,
-    course_3: Optional[str] = None,
+    course: Optional[str] = None,
     start_time_1: Optional[str] = None,
     capacity_1: Optional[int] = None,
     start_time_2: Optional[str] = None,
@@ -59,21 +82,22 @@ def upsert_day_config(
     conn=None,
 ) -> None:
     sql = """
-        INSERT INTO day_config (date,is_closed,is_manual_override,course_1,course_2,course_3,
-            start_time_1,capacity_1,start_time_2,capacity_2,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        INSERT INTO day_config
+          (date, is_closed, is_manual_override, course,
+           start_time_1, capacity_1, start_time_2, capacity_2, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?)
         ON CONFLICT(date) DO UPDATE SET
             is_closed=excluded.is_closed,
             is_manual_override=excluded.is_manual_override,
-            course_1=excluded.course_1, course_2=excluded.course_2,
-            course_3=excluded.course_3, start_time_1=excluded.start_time_1,
-            capacity_1=excluded.capacity_1, start_time_2=excluded.start_time_2,
-            capacity_2=excluded.capacity_2, updated_at=excluded.updated_at
+            course=excluded.course,
+            start_time_1=excluded.start_time_1,
+            capacity_1=excluded.capacity_1,
+            start_time_2=excluded.start_time_2,
+            capacity_2=excluded.capacity_2,
+            updated_at=excluded.updated_at
     """
-    params = (date, is_closed, is_manual_override,
-              course_1 or None, course_2 or None, course_3 or None,
-              start_time_1, capacity_1, start_time_2 or None,
-              capacity_2, now())
+    params = (date, is_closed, is_manual_override, course or None,
+              start_time_1, capacity_1, start_time_2 or None, capacity_2, now())
     if conn is not None:
         conn.execute(sql, params)
     else:
@@ -82,43 +106,42 @@ def upsert_day_config(
             c.commit()
 
 
-def get_effective_config(date: str, defaults: dict,
+def get_effective_config(date_str: str, all_defaults: dict,
                           day_configs: Optional[dict[str, dict]] = None) -> dict:
-    """Merge day_config row (if exists) with defaults. Returns resolved config dict."""
-    dc = day_configs.get(date) if day_configs is not None else get_day_config(date)
+    """Merge day_config → weekday_defaults → course. Returns resolved config dict."""
+    weekday = _date_cls.fromisoformat(date_str).weekday()  # 0=Mon, 6=Sun
+    wd = all_defaults["weekday"].get(weekday, {})
 
-    def _pick(dc_val, default_val):
-        return dc_val if dc_val is not None else default_val
+    dc = day_configs.get(date_str) if day_configs is not None else get_day_config(date_str)
 
     if dc is None:
         return {
-            "course_1": defaults["course_1"],
-            "course_2": defaults["course_2"],
-            "course_3": defaults["course_3"],
-            "start_time_1": defaults["start_time_1"],
-            "capacity_1": defaults["capacity_1"],
-            "start_time_2": None,
-            "capacity_2": None,
-            "is_closed": False,
+            "course":        all_defaults["course"],
+            "start_time_1":  wd.get("start_time_1"),
+            "capacity_1":    wd.get("capacity_1"),
+            "start_time_2":  wd.get("start_time_2"),
+            "capacity_2":    wd.get("capacity_2"),
+            "is_closed":     bool(wd.get("is_closed", 0)),
             "is_manual_override": False,
         }
+
+    def _pick(dc_val, wd_val):
+        return dc_val if dc_val is not None else wd_val
+
     return {
-        "course_1":          _pick(dc["course_1"],   defaults["course_1"]),
-        "course_2":          _pick(dc["course_2"],   defaults["course_2"]),
-        "course_3":          _pick(dc["course_3"],   defaults["course_3"]),
-        "start_time_1":      _pick(dc["start_time_1"], defaults["start_time_1"]),
-        "capacity_1":        _pick(dc["capacity_1"], defaults["capacity_1"]),
-        "start_time_2":      dc["start_time_2"],
-        "capacity_2":        dc["capacity_2"],
-        "is_closed":         bool(dc["is_closed"]),
-        "is_manual_override": bool(dc["is_manual_override"]),
+        "course":        _pick(dc.get("course"),       all_defaults["course"]),
+        "start_time_1":  _pick(dc.get("start_time_1"), wd.get("start_time_1")),
+        "capacity_1":    _pick(dc.get("capacity_1"),   wd.get("capacity_1")),
+        "start_time_2":  _pick(dc.get("start_time_2"), wd.get("start_time_2")),
+        "capacity_2":    _pick(dc.get("capacity_2"),   wd.get("capacity_2")),
+        "is_closed":     bool(dc.get("is_closed", wd.get("is_closed", 0))),
+        "is_manual_override": bool(dc.get("is_manual_override", 0)),
     }
 
 
 # ── Reservations ──────────────────────────────────────────────────────────────
 
 def get_inventory_bulk(dates: list[str]) -> dict[tuple[str, int], dict]:
-    """One query: returns {(date, rotation): {booked, confirmed_count}} for all dates."""
     if not dates:
         return {}
     placeholders = ",".join("?" * len(dates))
@@ -145,23 +168,36 @@ def count_active_for_date(date: str) -> int:
         ).fetchone()[0]
 
 
+def _weekday_cap(conn, date_str: str, rotation: int, dc: Optional[dict]) -> int:
+    """Resolve capacity for a rotation, falling back to weekday_defaults."""
+    if rotation == 1:
+        if dc and dc.get("capacity_1") is not None:
+            return dc["capacity_1"]
+    else:
+        if dc and dc.get("capacity_2") is not None:
+            return dc["capacity_2"]
+
+    weekday = _date_cls.fromisoformat(date_str).weekday()
+    wd_row = conn.execute(
+        "SELECT * FROM weekday_defaults WHERE weekday=?", (weekday,)
+    ).fetchone()
+    if wd_row is None:
+        return 0
+    return wd_row["capacity_1"] if rotation == 1 else (wd_row["capacity_2"] or 0)
+
+
 def create_reservation(
     date: str, rotation: int, name: str, num_people: int,
     phone: str, email: str, note: Optional[str],
 ) -> Optional[int]:
-    """Insert reservation inside a transaction with re-check. Returns id or None if capacity exceeded."""
+    """Insert reservation inside a transaction with re-check. Returns id or None."""
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
-        # Re-read capacity inside transaction
-        defaults = dict(conn.execute("SELECT * FROM defaults WHERE id=1").fetchone())
-        dc_row = conn.execute("SELECT * FROM day_config WHERE date=?", (date,)).fetchone()
+        dc_row = conn.execute(
+            "SELECT * FROM day_config WHERE date=?", (date,)
+        ).fetchone()
         dc = dict(dc_row) if dc_row else None
-
-        if rotation == 1:
-            cap = (dc["capacity_1"] if dc and dc["capacity_1"] is not None
-                   else defaults["capacity_1"])
-        else:
-            cap = dc["capacity_2"] if dc and dc["capacity_2"] is not None else 0
+        cap = _weekday_cap(conn, date, rotation, dc)
 
         booked = conn.execute(
             "SELECT COALESCE(SUM(num_people),0) FROM reservation "
@@ -177,8 +213,7 @@ def create_reservation(
         cur = conn.execute(
             "INSERT INTO reservation (date,rotation,name,num_people,phone,email,note,"
             "created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
-            (date, rotation, name, num_people, phone, email,
-             note or None, ts, ts),
+            (date, rotation, name, num_people, phone, email, note or None, ts, ts),
         )
         rid = cur.lastrowid
         conn.commit()
@@ -220,25 +255,20 @@ def cancel_reservation(rid: int) -> None:
 
 
 def move_reservation(rid: int, new_date: str, new_rotation: int) -> tuple[bool, str]:
-    """Move reservation with inventory re-check. Returns (ok, error_msg)."""
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
-        res = conn.execute("SELECT * FROM reservation WHERE id=?", (rid,)).fetchone()
+        res = conn.execute(
+            "SELECT * FROM reservation WHERE id=?", (rid,)
+        ).fetchone()
         if not res or res["status"] != "active":
             conn.execute("ROLLBACK")
             return False, "予約が見つかりません"
 
-        defaults = dict(conn.execute("SELECT * FROM defaults WHERE id=1").fetchone())
         dc_row = conn.execute(
             "SELECT * FROM day_config WHERE date=?", (new_date,)
         ).fetchone()
         dc = dict(dc_row) if dc_row else None
-
-        if new_rotation == 1:
-            cap = (dc["capacity_1"] if dc and dc["capacity_1"] is not None
-                   else defaults["capacity_1"])
-        else:
-            cap = dc["capacity_2"] if dc and dc["capacity_2"] is not None else 0
+        cap = _weekday_cap(conn, new_date, new_rotation, dc)
 
         booked = conn.execute(
             "SELECT COALESCE(SUM(num_people),0) FROM reservation "

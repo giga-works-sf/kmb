@@ -22,12 +22,11 @@ def get_booking_window(today: Optional[date] = None) -> tuple[date, date]:
 
 def build_customer_calendar(year: int, month: int,
                               today: Optional[date] = None) -> list[list[Optional[dict]]]:
-    """Return weeks x days grid with customer display info per cell."""
     if today is None:
         today = date.today()
     earliest, latest = get_booking_window(today)
-    defaults   = models.get_defaults()
-    day_cfgs   = models.get_all_day_configs()
+    all_defaults = models.get_all_defaults()
+    day_cfgs     = models.get_all_day_configs()
 
     month_dates = [
         date(year, month, d).isoformat()
@@ -43,7 +42,7 @@ def build_customer_calendar(year: int, month: int,
                 row.append(None)
                 continue
             d = date(year, month, day_num)
-            cfg = models.get_effective_config(d.isoformat(), defaults, day_cfgs)
+            cfg = models.get_effective_config(d.isoformat(), all_defaults, day_cfgs)
             row.append(_customer_cell(d, cfg, inventory, earliest, latest, today))
         weeks.append(row)
     return weeks
@@ -86,9 +85,8 @@ def _customer_cell(d: date, cfg: dict, inventory: dict,
 
 
 def build_admin_calendar(year: int, month: int) -> list[list[Optional[dict]]]:
-    """Return weeks x days grid with admin display info per cell."""
-    defaults = models.get_defaults()
-    day_cfgs = models.get_all_day_configs()
+    all_defaults = models.get_all_defaults()
+    day_cfgs     = models.get_all_day_configs()
 
     month_dates = [
         date(year, month, d).isoformat()
@@ -104,7 +102,7 @@ def build_admin_calendar(year: int, month: int) -> list[list[Optional[dict]]]:
                 row.append(None)
                 continue
             d = date(year, month, day_num)
-            cfg = models.get_effective_config(d.isoformat(), defaults, day_cfgs)
+            cfg = models.get_effective_config(d.isoformat(), all_defaults, day_cfgs)
             row.append(_admin_cell(d, cfg, inventory))
         weeks.append(row)
     return weeks
@@ -140,12 +138,9 @@ def _admin_cell(d: date, cfg: dict, inventory: dict) -> dict:
     return cell
 
 
-def apply_default_propagation(old_defaults: dict) -> list[str]:
-    """
-    Snapshot effective config for future dates that have active reservations
-    AND are not already manually overridden. Returns list of protected date strings.
-    Call BEFORE saving new defaults.
-    """
+def apply_default_propagation(old_all_defaults: dict) -> list[str]:
+    """Snapshot effective config for future reserved dates not already overridden.
+    Call BEFORE saving new defaults. Returns list of protected date strings."""
     from app.db import get_conn, now as _now
 
     today = date.today()
@@ -180,22 +175,20 @@ def apply_default_propagation(old_defaults: dict) -> list[str]:
             if dc and dc["is_manual_override"]:
                 continue
 
-            # Use default-capture to avoid closure issue: _dc=dc captures the
-            # current value of dc for this iteration, not a late-binding reference.
-            def _pick(dc_v, def_v, _dc=dc):
-                return dc_v if _dc and dc_v is not None else def_v
+            wd = old_all_defaults["weekday"].get(d.weekday(), {})
+
+            def _pick(dc_v, wd_v, _dc=dc):
+                return dc_v if _dc and dc_v is not None else wd_v
 
             models.upsert_day_config(
                 date_str,
-                is_closed=dc["is_closed"] if dc else 0,
+                is_closed=dc["is_closed"] if dc else wd.get("is_closed", 0),
                 is_manual_override=0,
-                course_1=_pick(dc["course_1"] if dc else None, old_defaults["course_1"]),
-                course_2=_pick(dc["course_2"] if dc else None, old_defaults["course_2"]),
-                course_3=_pick(dc["course_3"] if dc else None, old_defaults["course_3"]),
-                start_time_1=_pick(dc["start_time_1"] if dc else None, old_defaults["start_time_1"]),
-                capacity_1=_pick(dc["capacity_1"] if dc else None, old_defaults["capacity_1"]),
-                start_time_2=dc["start_time_2"] if dc else None,
-                capacity_2=dc["capacity_2"] if dc else None,
+                course=_pick(dc.get("course") if dc else None, old_all_defaults["course"]),
+                start_time_1=_pick(dc["start_time_1"] if dc else None, wd.get("start_time_1")),
+                capacity_1=_pick(dc["capacity_1"] if dc else None, wd.get("capacity_1")),
+                start_time_2=_pick(dc["start_time_2"] if dc else None, wd.get("start_time_2")),
+                capacity_2=_pick(dc["capacity_2"] if dc else None, wd.get("capacity_2")),
                 conn=conn,
             )
             protected.append(date_str)
@@ -205,7 +198,6 @@ def apply_default_propagation(old_defaults: dict) -> list[str]:
 
 
 def month_nav(year: int, month: int) -> dict:
-    """Return prev/next year+month and label for calendar navigation."""
     prev = date(year, month, 1) - timedelta(days=1)
     nxt  = date(year, month, cal_mod.monthrange(year, month)[1]) + timedelta(days=1)
     return {

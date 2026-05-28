@@ -1,10 +1,11 @@
-"""Admin router: calendar, day edit, reservation ops, settings (stubs for Task 9)."""
+"""Admin router: calendar, day edit, reservation ops, settings."""
 from __future__ import annotations
+import calendar as cal_mod
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -16,6 +17,7 @@ router = APIRouter(dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 _SLOTS = get_time_slots()
 _COMMON = {"shop_name": SHOP_NAME}
+_WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
 
 
 def _tpl(name: str, request: Request, **ctx):
@@ -50,33 +52,27 @@ async def admin_calendar(request: Request, year: int, month: int):
 
 @router.get("/day/{target_date}", response_class=HTMLResponse)
 async def day_edit(request: Request, target_date: str, msg: Optional[str] = None):
-    defaults = models.get_defaults()
-    dc = models.get_day_config(target_date)
-    cfg = models.get_effective_config(target_date, defaults)
+    all_defaults = models.get_all_defaults()
+    dc  = models.get_day_config(target_date)
+    cfg = models.get_effective_config(target_date, all_defaults)
     reservations = models.list_reservations_for_date(target_date)
     return _tpl("admin/day_edit.html", request,
                 target_date=target_date, dc=dc, cfg=cfg,
-                defaults=defaults, reservations=reservations,
-                slots=_SLOTS, msg=msg, error=None)
+                reservations=reservations, slots=_SLOTS, msg=msg, error=None)
 
 
 @router.post("/day/{target_date}", response_class=HTMLResponse)
-async def day_edit_save(
-    request: Request,
-    target_date: str,
-    is_closed: Optional[str]   = Form(None),
-    course_1: str               = Form(""),
-    course_2: str               = Form(""),
-    course_3: str               = Form(""),
-    start_time_1: str           = Form(""),
-    capacity_1: Optional[str]   = Form(None),
-    start_time_2: str           = Form(""),
-    capacity_2: Optional[str]   = Form(None),
-):
-    closed = is_closed == "1"
+async def day_edit_save(request: Request, target_date: str):
+    form = await request.form()
+    closed        = form.get("is_closed") == "1"
+    course        = (form.get("course") or "").strip() or None
+    start_time_1  = form.get("start_time_1") or None
+    capacity_1    = form.get("capacity_1")
+    start_time_2  = form.get("start_time_2") or None
+    capacity_2    = form.get("capacity_2")
+
     errors = []
 
-    # Validate capacity vs existing reservations
     for rot, cap_str in ((1, capacity_1), (2, capacity_2 if start_time_2 else None)):
         if cap_str is None:
             continue
@@ -85,22 +81,25 @@ async def day_edit_save(
         except ValueError:
             errors.append(f"席数{rot}は整数で入力してください")
             continue
-        inv = models.get_inventory_bulk([target_date]).get((target_date, rot), {"booked": 0})
+        inv = models.get_inventory_bulk([target_date]).get(
+            (target_date, rot), {"booked": 0}
+        )
         if cap < inv["booked"]:
             errors.append(
-                f"回転{rot}の席数（{cap}）は現在の予約数（{inv['booked']}人）を下回るため設定できません"
+                f"回転{rot}の席数（{cap}）は現在の予約数（{inv['booked']}人）を"
+                "下回るため設定できません"
             )
 
     if closed and models.count_active_for_date(target_date) > 0:
         errors.append(f"{target_date} は予約があるため定休日に設定できません")
 
     if errors:
-        defaults = models.get_defaults()
-        dc = models.get_day_config(target_date)
-        cfg = models.get_effective_config(target_date, defaults)
+        all_defaults = models.get_all_defaults()
+        dc  = models.get_day_config(target_date)
+        cfg = models.get_effective_config(target_date, all_defaults)
         reservations = models.list_reservations_for_date(target_date)
         return _tpl("admin/day_edit.html", request,
-                    target_date=target_date, dc=dc, cfg=cfg, defaults=defaults,
+                    target_date=target_date, dc=dc, cfg=cfg,
                     reservations=reservations, slots=_SLOTS,
                     msg=None, error=" / ".join(errors))
 
@@ -108,63 +107,57 @@ async def day_edit_save(
         target_date,
         is_closed=1 if closed else 0,
         is_manual_override=1,
-        course_1=course_1.strip() or None,
-        course_2=course_2.strip() or None,
-        course_3=course_3.strip() or None,
-        start_time_1=start_time_1 or None,
+        course=course,
+        start_time_1=start_time_1,
         capacity_1=int(capacity_1) if capacity_1 else None,
-        start_time_2=start_time_2.strip() or None,
+        start_time_2=start_time_2,
         capacity_2=int(capacity_2) if capacity_2 and start_time_2 else None,
     )
-    return RedirectResponse(f"/kmb/admin/day/{target_date}?msg=保存しました", status_code=303)
+    return RedirectResponse(
+        f"/kmb/admin/day/{target_date}?msg=保存しました", status_code=303
+    )
 
 
 # ── Reservation operations ────────────────────────────────────────────────────
 
 @router.post("/reservation/{rid}/confirm", response_class=HTMLResponse)
-async def reservation_confirm(
-    request: Request, rid: int,
-    confirmed: int  = Form(...),
-    back_date: str  = Form(...),
-):
-    models.set_confirmed(rid, confirmed)
-    return RedirectResponse(f"/kmb/admin/day/{back_date}", status_code=303)
+async def reservation_confirm(request: Request, rid: int):
+    form = await request.form()
+    models.set_confirmed(rid, int(form["confirmed"]))
+    return RedirectResponse(f"/kmb/admin/day/{form['back_date']}", status_code=303)
 
 
 @router.post("/reservation/{rid}/cancel", response_class=HTMLResponse)
-async def reservation_cancel(
-    request: Request, rid: int,
-    back_date: str = Form(...),
-):
+async def reservation_cancel(request: Request, rid: int):
+    form = await request.form()
     models.cancel_reservation(rid)
-    return RedirectResponse(f"/kmb/admin/day/{back_date}", status_code=303)
+    return RedirectResponse(f"/kmb/admin/day/{form['back_date']}", status_code=303)
 
 
 @router.post("/reservation/{rid}/move", response_class=HTMLResponse)
-async def reservation_move(
-    request: Request, rid: int,
-    new_date: str      = Form(...),
-    new_rotation: int  = Form(...),
-    back_date: str     = Form(...),
-):
-    ok, err = models.move_reservation(rid, new_date, new_rotation)
+async def reservation_move(request: Request, rid: int):
+    form = await request.form()
+    ok, err = models.move_reservation(
+        rid, str(form["new_date"]), int(form["new_rotation"])
+    )
     if not ok:
         return RedirectResponse(
-            f"/kmb/admin/day/{back_date}?msg={err}", status_code=303
+            f"/kmb/admin/day/{form['back_date']}?msg={err}", status_code=303
         )
-    return RedirectResponse(f"/kmb/admin/day/{new_date}", status_code=303)
+    return RedirectResponse(f"/kmb/admin/day/{form['new_date']}", status_code=303)
 
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 
 @router.get("/settings", response_class=HTMLResponse)
 async def settings_get(request: Request, msg: Optional[str] = None):
-    defaults = models.get_defaults()
+    all_defaults = models.get_all_defaults()
     today = date.today()
     weeks = _holiday_calendar(today.year, today.month)
     nav   = services.month_nav(today.year, today.month)
     return _tpl("admin/settings.html", request,
-                defaults=defaults, slots=_SLOTS,
+                all_defaults=all_defaults, slots=_SLOTS,
+                weekday_names=_WEEKDAY_NAMES,
                 weeks=weeks, nav=nav,
                 year=today.year, month=today.month, msg=msg)
 
@@ -172,37 +165,42 @@ async def settings_get(request: Request, msg: Optional[str] = None):
 @router.get("/settings/calendar/{year}/{month}", response_class=HTMLResponse)
 async def settings_calendar(request: Request, year: int, month: int,
                               msg: Optional[str] = None):
-    defaults = models.get_defaults()
+    all_defaults = models.get_all_defaults()
     weeks = _holiday_calendar(year, month)
     nav   = services.month_nav(year, month)
     return _tpl("admin/settings.html", request,
-                defaults=defaults, slots=_SLOTS,
+                all_defaults=all_defaults, slots=_SLOTS,
+                weekday_names=_WEEKDAY_NAMES,
                 weeks=weeks, nav=nav, year=year, month=month, msg=msg)
 
 
 @router.post("/settings", response_class=HTMLResponse)
-async def settings_post(
-    request: Request,
-    course_1: str     = Form(""),
-    course_2: str     = Form(""),
-    course_3: str     = Form(""),
-    start_time_1: str  = Form(...),
-    capacity_1: int    = Form(...),
-):
-    old_defaults = models.get_defaults()
-    protected = services.apply_default_propagation(old_defaults)
-    models.save_defaults(
-        course_1.strip() or None,
-        course_2.strip() or None,
-        course_3.strip() or None,
-        start_time_1,
-        capacity_1,
-    )
+async def settings_post(request: Request):
+    form = await request.form()
+    course = (form.get("course") or "").strip() or None
+
+    weekday_settings = []
+    for wd in range(7):
+        cap1 = form.get(f"wd_{wd}_capacity_1")
+        cap2 = form.get(f"wd_{wd}_capacity_2")
+        weekday_settings.append({
+            "weekday":      wd,
+            "is_closed":    1 if form.get(f"wd_{wd}_is_closed") == "1" else 0,
+            "start_time_1": form.get(f"wd_{wd}_start_time_1") or None,
+            "capacity_1":   int(cap1) if cap1 else None,
+            "start_time_2": form.get(f"wd_{wd}_start_time_2") or None,
+            "capacity_2":   int(cap2) if cap2 else None,
+        })
+
+    old_all_defaults = models.get_all_defaults()
+    protected = services.apply_default_propagation(old_all_defaults)
+    models.save_defaults(course)
+    models.save_weekday_defaults(weekday_settings)
+
     today = date.today()
+    msg = "保存しました。"
     if protected:
-        msg = "保存しました。" + "、".join(protected) + " は予約があるため変更されませんでした。"
-    else:
-        msg = "保存しました。"
+        msg += "、".join(protected) + " は予約があるため変更されませんでした。"
     return RedirectResponse(
         f"/kmb/admin/settings/calendar/{today.year}/{today.month}?msg={msg}",
         status_code=303,
@@ -210,13 +208,13 @@ async def settings_post(
 
 
 @router.post("/holiday", response_class=HTMLResponse)
-async def holiday_toggle(
-    request: Request,
-    target_date: str = Form(...),
-    is_closed: int    = Form(...),
-    year: int         = Form(...),
-    month: int        = Form(...),
-):
+async def holiday_toggle(request: Request):
+    form = await request.form()
+    target_date = str(form["target_date"])
+    is_closed   = int(form["is_closed"])
+    year        = int(form["year"])
+    month       = int(form["month"])
+
     if is_closed:
         count = models.count_active_for_date(target_date)
         if count > 0:
@@ -231,9 +229,7 @@ async def holiday_toggle(
         target_date,
         is_closed=is_closed,
         is_manual_override=dc["is_manual_override"] if dc else 0,
-        course_1=dc["course_1"] if dc else None,
-        course_2=dc["course_2"] if dc else None,
-        course_3=dc["course_3"] if dc else None,
+        course=dc.get("course") if dc else None,
         start_time_1=dc["start_time_1"] if dc else None,
         capacity_1=dc["capacity_1"] if dc else None,
         start_time_2=dc["start_time_2"] if dc else None,
@@ -245,10 +241,8 @@ async def holiday_toggle(
 
 
 def _holiday_calendar(year: int, month: int) -> list:
-    """Calendar grid for holiday settings — shows all dates with closed/reservation status."""
-    import calendar as cal_mod
-    defaults = models.get_defaults()
-    day_cfgs = models.get_all_day_configs()
+    all_defaults = models.get_all_defaults()
+    day_cfgs     = models.get_all_day_configs()
     weeks = []
     for week in cal_mod.monthcalendar(year, month):
         row = []
@@ -257,7 +251,7 @@ def _holiday_calendar(year: int, month: int) -> list:
                 row.append(None)
                 continue
             d_str = date(year, month, d_num).isoformat()
-            cfg   = models.get_effective_config(d_str, defaults, day_cfgs)
+            cfg   = models.get_effective_config(d_str, all_defaults, day_cfgs)
             count = models.count_active_for_date(d_str)
             row.append({
                 "date": d_str, "day": d_num,
