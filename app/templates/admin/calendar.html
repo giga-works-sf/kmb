@@ -26,12 +26,14 @@
     {% if cell is none %}
     <td class="empty"></td>
     {% elif cell.is_closed %}
-    <td class="closed-day">
+    <td class="closed-day{% if cell.is_past %} past-cell{% endif %}"
+        {% if cell.is_past %}onclick="location.href='/kmb/admin/day/{{ cell.date }}'"
+                             style="cursor:pointer"{% endif %}>
       <div class="day-num">{{ cell.day }}</div>
       <div class="day-info">休</div>
     </td>
     {% else %}
-    <td class="admin-cell color-{{ cell.color }}"
+    <td class="admin-cell color-{{ cell.color }}{% if cell.is_past %} past-cell{% endif %}"
         onclick="location.href='/kmb/admin/day/{{ cell.date }}'">
       <div class="day-num">
         {{ cell.day }}

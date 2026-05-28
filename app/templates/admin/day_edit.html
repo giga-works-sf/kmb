@@ -74,6 +74,12 @@
 
 <hr style="margin:32px 0;border:none;border-top:1px solid #e0e0e0">
 <h3 style="font-size:1rem;margin-bottom:16px">この日の設定</h3>
+{% if is_past %}
+<p style="color:#888;font-size:0.85rem;padding:10px 14px;background:#f5f5f5;
+          border-radius:4px;border-left:4px solid #ccc">
+  過去の日付は変更できません
+</p>
+{% else %}
 <div class="form-wrap" style="max-width:560px">
   <form method="post" action="/kmb/admin/day/{{ target_date }}">
 
@@ -119,4 +125,5 @@
     <button class="btn btn-primary" type="submit" style="margin-top:20px">保存</button>
   </form>
 </div>
+{% endif %}
 {% endblock %}

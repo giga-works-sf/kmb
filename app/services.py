@@ -15,7 +15,8 @@ def get_booking_window(today: Optional[date] = None) -> tuple[date, date]:
         today = date.today()
     cal_start = date.fromisoformat(CALENDAR_START)
     cal_end   = date.fromisoformat(CALENDAR_END)
-    earliest = max(today + timedelta(days=1), cal_start)
+    # 当日・翌日はTel対応のため、オンライン予約は明後日から
+    earliest = max(today + timedelta(days=2), cal_start)
     latest   = min(today + relativedelta(months=BOOKING_AHEAD_MONTHS), cal_end)
     return earliest, latest
 
@@ -53,7 +54,13 @@ def _customer_cell(d: date, cfg: dict, inventory: dict,
     cell: dict = {"date": d.isoformat(), "day": d.day,
                   "kind": "normal", "display": "", "bookable_rotations": []}
 
-    if d <= today:
+    # 過去の日付: グレーアウト ✕
+    if d < today:
+        cell.update(kind="past", display="✕")
+        return cell
+
+    # 当日・翌日: Tel のみ
+    if d <= today + timedelta(days=1):
         cell.update(kind="tel", display="Tel")
         return cell
 
@@ -113,6 +120,7 @@ def _admin_cell(d: date, cfg: dict, inventory: dict) -> dict:
         "date": d.isoformat(), "day": d.day,
         "is_closed": cfg["is_closed"],
         "is_manual_override": cfg["is_manual_override"],
+        "is_past": d < date.today(),
         "rotations": [], "color": "neutral",
     }
 

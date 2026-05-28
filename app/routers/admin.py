@@ -57,14 +57,20 @@ async def day_edit(request: Request, target_date: str, msg: Optional[str] = None
     cfg = models.get_effective_config(target_date, all_defaults)
     reservations = models.list_reservations_for_date(target_date)
     weekday_name = _WEEKDAY_NAMES[date.fromisoformat(target_date).weekday()]
+    is_past = date.fromisoformat(target_date) < date.today()
     return _tpl("admin/day_edit.html", request,
                 target_date=target_date, weekday_name=weekday_name,
-                dc=dc, cfg=cfg,
+                dc=dc, cfg=cfg, is_past=is_past,
                 reservations=reservations, slots=_SLOTS, msg=msg, error=None)
 
 
 @router.post("/day/{target_date}", response_class=HTMLResponse)
 async def day_edit_save(request: Request, target_date: str):
+    if date.fromisoformat(target_date) < date.today():
+        return RedirectResponse(
+            f"/kmb/admin/day/{target_date}?msg=過去の日付は変更できません",
+            status_code=303,
+        )
     form = await request.form()
     closed        = form.get("is_closed") == "1"
     course        = (form.get("course") or "").strip() or None
