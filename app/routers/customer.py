@@ -155,8 +155,9 @@ async def booking_complete(request: Request, rid: int):
     all_defaults = models.get_all_defaults()
     cfg = models.get_effective_config(res["date"], all_defaults)
     start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
+    weekday_name = _WEEKDAY_NAMES[date.fromisoformat(res["date"]).weekday()]
     return _tpl("customer/complete.html", request,
-                res=res, cfg=cfg, start_time=start_time)
+                res=res, cfg=cfg, start_time=start_time, weekday_name=weekday_name)
 
 
 def _available_rotations(target_date: str, cfg: dict) -> list[dict]:

@@ -23,30 +23,31 @@
     📞 {{ res.phone }} / ✉ {{ res.email }}
     {% if res.note %} / 備考: {{ res.note }}{% endif %}
   </div>
-  <div class="actions">
-    <form method="post" action="/kmb/admin/reservation/{{ res.id }}/confirm"
-          style="display:inline">
+  <div class="actions" style="flex-wrap:wrap;align-items:center">
+    <form method="post" action="/kmb/admin/reservation/{{ res.id }}/confirm">
       <input type="hidden" name="back_date" value="{{ target_date }}">
-      <input type="hidden" name="confirmed" value="{{ 0 if res.confirmed else 1 }}">
+      <input type="hidden" name="confirmed" value="{{ 0 if res.confirmed else 1 }}"
+             style="width:auto;padding:0;border:none;margin:0">
       <button class="btn btn-sm" type="submit">
         {% if res.confirmed %}✅ 確認済 → 未確認に戻す{% else %}○ 未確認 → 確認済にする{% endif %}
       </button>
     </form>
     <form method="post" action="/kmb/admin/reservation/{{ res.id }}/move"
-          style="display:inline-flex;gap:4px;align-items:center">
-      <input type="hidden" name="back_date" value="{{ target_date }}">
+          style="display:flex;gap:4px;align-items:center">
+      <input type="hidden" name="back_date" value="{{ target_date }}"
+             style="width:auto;padding:0;border:none;margin:0">
       <input type="date" name="new_date" value="{{ target_date }}"
-             style="width:140px;padding:5px">
-      <select name="new_rotation" style="padding:5px">
+             style="width:140px;padding:5px;margin:0">
+      <select name="new_rotation" style="width:auto;padding:5px;margin:0">
         <option value="1">1回転</option>
         <option value="2">2回転</option>
       </select>
       <button class="btn btn-sm" type="submit">移動</button>
     </form>
     <form method="post" action="/kmb/admin/reservation/{{ res.id }}/cancel"
-          style="display:inline"
           onsubmit="return confirm('{{ res.name }} 様の予約を削除しますか？')">
-      <input type="hidden" name="back_date" value="{{ target_date }}">
+      <input type="hidden" name="back_date" value="{{ target_date }}"
+             style="width:auto;padding:0;border:none;margin:0">
       <button class="btn btn-danger" type="submit">削除</button>
     </form>
   </div>
@@ -92,7 +93,8 @@
 
     <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;
                   margin-top:0;color:#c62828;cursor:pointer">
-      <input type="checkbox" name="is_closed" value="1" style="margin-top:3px;flex-shrink:0"
+      <input type="checkbox" name="is_closed" value="1"
+             style="width:auto;margin-top:3px;flex-shrink:0;padding:0"
              {% if cfg.is_closed %}checked{% endif %}>
       <span>この日を定休日にする（予約がある場合は設定できません）</span>
     </label>

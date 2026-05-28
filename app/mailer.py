@@ -1,30 +1,30 @@
 """Send confirmation email to customer. Falls back to outbox/ in dev mode."""
 from __future__ import annotations
 import smtplib
-from datetime import datetime
+from datetime import date as _date_cls, datetime
 from email.message import EmailMessage
 
 from app.config import (MAIL_RELAY_HOST, MAIL_RELAY_PORT,
                          MAIL_FROM, SHOP_NAME, OUTBOX_DIR)
 
+_WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
+
 
 def send_confirmation(reservation: dict, effective_cfg: dict) -> None:
     """Send booking confirmation. Errors are printed to stderr, never raised."""
-    courses = [
-        c for c in [
-            effective_cfg.get("course_1"),
-            effective_cfg.get("course_2"),
-            effective_cfg.get("course_3"),
-        ] if c
-    ]
+    course = effective_cfg.get("course")
     rotation = reservation["rotation"]
     start_time = (effective_cfg["start_time_1"] if rotation == 1
                   else effective_cfg["start_time_2"])
 
+    weekday = _WEEKDAY_NAMES[_date_cls.fromisoformat(reservation["date"]).weekday()]
+    date_str = f"{reservation['date']}（{weekday}）"
+
     body = (
-        f"【予約確認】{SHOP_NAME}\n\n"
-        f"以下の内容でご予約を承りました。\n\n"
-        f"日付　　: {reservation['date']}\n"
+        f"【予約リクエスト確認】{SHOP_NAME}\n\n"
+        f"以下の内容でご予約を承りました。\n"
+        f"予約が確定しましたら追ってご連絡を差し上げます。\n\n"
+        f"日付　　: {date_str}\n"
         f"開始時間: {start_time}\n"
         f"人数　　: {reservation['num_people']}名\n"
         f"代表者名: {reservation['name']} 様\n"
@@ -32,12 +32,12 @@ def send_confirmation(reservation: dict, effective_cfg: dict) -> None:
     )
     if reservation.get("note"):
         body += f"備考　　: {reservation['note']}\n"
-    if courses:
-        body += "\n【コース内容】\n" + "\n".join(f"・{c}" for c in courses) + "\n"
+    if course:
+        body += f"\n【コース内容】\n{course}\n"
     body += f"\n変更・キャンセルのご連絡はお電話にてお願いいたします。\n{SHOP_NAME}\n"
 
     msg = EmailMessage()
-    msg["Subject"] = f"【予約確認】{reservation['date']} {start_time}〜 {SHOP_NAME}"
+    msg["Subject"] = f"【予約リクエスト確認】{date_str} {start_time}〜 {SHOP_NAME}"
     msg["From"]    = MAIL_FROM or "noreply@example.com"
     msg["To"]      = reservation["email"]
     msg.set_content(body)

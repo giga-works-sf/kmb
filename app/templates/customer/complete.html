@@ -1,14 +1,18 @@
 {% extends "base.html" %}
 {% block title %}ご予約完了{% endblock %}
 {% block content %}
-<h2>✅ ご予約が完了しました</h2>
+<h2>✅ ご予約リクエストが完了しました</h2>
 <div class="msg-ok">確認メールを {{ res.email }} に送信しました。</div>
+<p style="font-size:0.85rem;color:#555;margin-top:8px">
+  再度メールの受信をご確認下さい。<br>
+  メールが届いていない場合は迷惑メールになっている場合がございます。
+</p>
 
 <div class="form-wrap" style="margin-top:16px">
   <h3 style="font-size:1rem;margin-bottom:12px">ご予約内容</h3>
   <table style="width:100%;font-size:0.9rem;border-collapse:collapse">
     <tr><td style="padding:6px 0;color:#666;width:120px">日付</td>
-        <td><strong>{{ res.date }}</strong></td></tr>
+        <td><strong>{{ res.date }}（{{ weekday_name }}）</strong></td></tr>
     <tr><td style="padding:6px 0;color:#666">開始時間</td>
         <td><strong>{{ start_time }}〜</strong></td></tr>
     <tr><td style="padding:6px 0;color:#666">人数</td>
