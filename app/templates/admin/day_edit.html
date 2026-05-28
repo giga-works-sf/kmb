@@ -31,19 +31,27 @@
 </form>
 {% endmacro %}
 
-{# ── 予約一覧（active のみ） ── #}
-{% set active_res = reservations | selectattr("status", "equalto", "active") | list %}
-<h3 style="font-size:1rem">予約一覧</h3>
-{% if not active_res %}
+{# ── 予約・SMS未確認 を回転別に表示 ── #}
+{% set active_res  = reservations | selectattr("status", "equalto", "active")         | list %}
+{% set pending_res = reservations | selectattr("status", "equalto", "pending_verify") | list %}
+{% set two_rot = cfg.start_time_2 %}
+
+{% for rot_num in [1, 2] %}
+{% set rot_time = cfg.start_time_1 if rot_num == 1 else cfg.start_time_2 %}
+{% if rot_time %}
+{% set rot_active  = active_res  | selectattr("rotation", "equalto", rot_num) | list %}
+{% set rot_pending = pending_res | selectattr("rotation", "equalto", rot_num) | list %}
+
+{# 予約一覧セクション #}
+<h3 style="font-size:1rem;margin-top:{% if rot_num > 1 %}28px{% else %}0{% endif %}">
+  予約一覧{% if two_rot %} {{ rot_time }}-{% endif %}
+</h3>
+{% if not rot_active %}
 <p style="color:#888;font-size:0.9rem">予約はありません</p>
 {% else %}
-{% for res in active_res %}
+{% for res in rot_active %}
 <div class="res-card">
   <strong>{{ res.name }} 様 / {{ res.num_people }}名</strong>
-  {% if res.rotation == 2 %}
-  <span style="background:#e8f0fe;padding:2px 6px;border-radius:3px;
-               font-size:0.75rem;margin-left:8px">2回目</span>
-  {% endif %}
   <div class="res-meta">
     📞 {{ res.phone }} / ✉ {{ res.email }}
     {% if res.note %} / 備考: {{ res.note }}{% endif %}
@@ -64,17 +72,14 @@
 {% endfor %}
 {% endif %}
 
-{# ── SMS未確認一覧（pending_verify のみ） ── #}
-{% set pending_res = reservations | selectattr("status", "equalto", "pending_verify") | list %}
-{% if pending_res %}
-<h3 style="font-size:1rem;margin-top:28px;color:#e65100">SMS未確認一覧</h3>
-{% for res in pending_res %}
+{# SMS未確認セクション #}
+{% if rot_pending %}
+<h3 style="font-size:0.95rem;margin-top:16px;color:#e65100">
+  申込あり(SMS未確認){% if two_rot %} {{ rot_time }}-{% endif %}
+</h3>
+{% for res in rot_pending %}
 <div class="res-card" style="border-color:#f9a825">
   <strong>{{ res.name }} 様 / {{ res.num_people }}名</strong>
-  {% if res.rotation == 2 %}
-  <span style="background:#e8f0fe;padding:2px 6px;border-radius:3px;
-               font-size:0.75rem;margin-left:8px">2回目</span>
-  {% endif %}
   <div class="res-meta">
     📞 {{ res.phone }} / ✉ {{ res.email }}
     {% if res.note %} / 備考: {{ res.note }}{% endif %}
@@ -99,6 +104,9 @@
 </div>
 {% endfor %}
 {% endif %}
+
+{% endif %}{# /if rot_time #}
+{% endfor %}{# /for rot_num #}
 
 <hr style="margin:32px 0;border:none;border-top:1px solid #e0e0e0">
 <h3 style="font-size:1rem;margin-bottom:16px">この日の設定</h3>

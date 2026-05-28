@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app import models, services, mailer, sms
-from app.config import SHOP_NAME, NOTE_MAX_LEN, CALENDAR_START, CALENDAR_END
+from app.config import SHOP_NAME, NOTE_MAX_LEN, CALENDAR_START, CALENDAR_END, USE_SMS_VERIFICATION
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
@@ -145,9 +145,17 @@ async def booking_submit(
                     remaining=sel["remaining"] if sel else 0,
                     error="申し訳ありません、ご希望の人数分の空席がなくなりました。")
 
-    dev_code = sms.send_otp(phone_e164)
-    models.store_sms_otp(rid, phone_e164, dev_code)
-    return RedirectResponse(f"/kmb/verify-sms/{rid}", status_code=303)
+    if USE_SMS_VERIFICATION:
+        # SMS 認証フロー
+        dev_code = sms.send_otp(phone_e164)
+        models.store_sms_otp(rid, phone_e164, dev_code)
+        return RedirectResponse(f"/kmb/verify-sms/{rid}", status_code=303)
+    else:
+        # メール認証フロー（デフォルト）
+        token = models.store_email_token(rid)
+        res = models.get_reservation(rid)
+        mailer.send_verification(res, cfg, token)
+        return RedirectResponse(f"/kmb/complete/{rid}", status_code=303)
 
 
 @router.get("/verify-sms/{rid}", response_class=HTMLResponse)

@@ -231,6 +231,19 @@ def create_reservation(
         return rid
 
 
+def store_email_token(rid: int) -> str:
+    """Generate and store email verification token (2h expiry). Returns token."""
+    token = secrets.token_urlsafe(32)
+    expires = (datetime.now(timezone.utc) + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE reservation SET email_token=?, token_expires_at=?, updated_at=? WHERE id=?",
+            (token, expires, now(), rid),
+        )
+        conn.commit()
+    return token
+
+
 def store_sms_otp(rid: int, phone_e164: str, dev_code: Optional[str]) -> None:
     """Store E.164 phone and OTP info after reservation creation.
     dev_code is the plaintext OTP in dev mode (None in production).
