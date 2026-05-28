@@ -56,8 +56,10 @@ async def day_edit(request: Request, target_date: str, msg: Optional[str] = None
     dc  = models.get_day_config(target_date)
     cfg = models.get_effective_config(target_date, all_defaults)
     reservations = models.list_reservations_for_date(target_date)
+    weekday_name = _WEEKDAY_NAMES[date.fromisoformat(target_date).weekday()]
     return _tpl("admin/day_edit.html", request,
-                target_date=target_date, dc=dc, cfg=cfg,
+                target_date=target_date, weekday_name=weekday_name,
+                dc=dc, cfg=cfg,
                 reservations=reservations, slots=_SLOTS, msg=msg, error=None)
 
 
@@ -98,8 +100,10 @@ async def day_edit_save(request: Request, target_date: str):
         dc  = models.get_day_config(target_date)
         cfg = models.get_effective_config(target_date, all_defaults)
         reservations = models.list_reservations_for_date(target_date)
+        weekday_name = _WEEKDAY_NAMES[date.fromisoformat(target_date).weekday()]
         return _tpl("admin/day_edit.html", request,
-                    target_date=target_date, dc=dc, cfg=cfg,
+                    target_date=target_date, weekday_name=weekday_name,
+                    dc=dc, cfg=cfg,
                     reservations=reservations, slots=_SLOTS,
                     msg=None, error=" / ".join(errors))
 

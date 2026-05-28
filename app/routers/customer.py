@@ -14,6 +14,7 @@ from app.config import SHOP_NAME, NOTE_MAX_LEN, CALENDAR_START, CALENDAR_END
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
 _COMMON = {"shop_name": SHOP_NAME}
+_WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
 
 
 def _tpl(name: str, request: Request, **ctx):
@@ -70,8 +71,9 @@ async def booking_form(request: Request, target_date: str,
 
     sel = next(r for r in rotations if r["rotation"] == rotation)
 
+    weekday_name = _WEEKDAY_NAMES[d.weekday()]
     return _tpl("customer/booking.html", request,
-                target_date=target_date, cfg=cfg,
+                target_date=target_date, weekday_name=weekday_name, cfg=cfg,
                 rotations=rotations, selected_rotation=rotation,
                 remaining=sel["remaining"],
                 error=None)
@@ -117,8 +119,9 @@ async def booking_submit(
         rotations = _available_rotations(target_date, cfg)
         sel = next((r for r in rotations if r["rotation"] == rotation),
                    rotations[0] if rotations else None)
+        weekday_name = _WEEKDAY_NAMES[d.weekday()]
         return _tpl("customer/booking.html", request,
-                    target_date=target_date, cfg=cfg,
+                    target_date=target_date, weekday_name=weekday_name, cfg=cfg,
                     rotations=rotations, selected_rotation=rotation,
                     remaining=sel["remaining"] if sel else 0,
                     error=" / ".join(errors))
@@ -132,8 +135,9 @@ async def booking_submit(
         rotations = _available_rotations(target_date, cfg)
         sel = next((r for r in rotations if r["rotation"] == rotation),
                    rotations[0] if rotations else None)
+        weekday_name = _WEEKDAY_NAMES[d.weekday()]
         return _tpl("customer/booking.html", request,
-                    target_date=target_date, cfg=cfg,
+                    target_date=target_date, weekday_name=weekday_name, cfg=cfg,
                     rotations=rotations, selected_rotation=rotation,
                     remaining=sel["remaining"] if sel else 0,
                     error="申し訳ありません、ご希望の人数分の空席がなくなりました。")
