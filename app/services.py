@@ -133,12 +133,14 @@ def _admin_cell(d: date, cfg: dict, inventory: dict) -> dict:
         c = cfg["capacity_1"]   if rot == 1 else cfg["capacity_2"]
         if t is None:
             continue
-        inv = inventory.get((d.isoformat(), rot), {"booked": 0, "confirmed_count": 0})
-        b, conf = inv["booked"], inv["confirmed_count"]
+        inv = inventory.get((d.isoformat(), rot),
+                            {"booked": 0, "confirmed_count": 0, "pending_count": 0})
+        b, conf, pend = inv["booked"], inv["confirmed_count"], inv["pending_count"]
         total_booked += b
         total_confirmed += conf
         cell["rotations"].append(
-            {"rotation": rot, "time": t, "capacity": c, "booked": b, "confirmed": conf}
+            {"rotation": rot, "time": t, "capacity": c,
+             "booked": b, "confirmed": conf, "pending": pend}
         )
 
     if total_booked > 0:

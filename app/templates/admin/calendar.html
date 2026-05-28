@@ -41,7 +41,8 @@
       </div>
       {% for r in cell.rotations %}
       <div class="rot-line">
-        {{ r.time }}-<br>{{ r.capacity }}席/{{ r.booked }}予約/{{ r.confirmed }}確定
+        {{ r.time }}- {{ r.capacity }}席<br>
+        予約 {{ r.booked }}名{% if r.pending > 0 %}<span style="color:#e65100">({{ r.pending }}名未確認)</span>{% endif %}
       </div>
       {% endfor %}
     </td>

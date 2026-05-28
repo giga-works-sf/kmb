@@ -149,15 +149,19 @@ def get_inventory_bulk(dates: list[str]) -> dict[tuple[str, int], dict]:
     with get_conn() as conn:
         rows = conn.execute(
             f"""SELECT date, rotation,
-                    SUM(num_people) AS booked,
-                    SUM(CASE WHEN confirmed=1 THEN num_people ELSE 0 END) AS confirmed_count
+                    SUM(CASE WHEN status='active' THEN num_people ELSE 0 END) AS booked,
+                    SUM(CASE WHEN status='active' AND confirmed=1 THEN num_people ELSE 0 END) AS confirmed_count,
+                    SUM(CASE WHEN status='pending_verify' THEN num_people ELSE 0 END) AS pending_count
                 FROM reservation
-                WHERE date IN ({placeholders}) AND status='active'
+                WHERE date IN ({placeholders}) AND status IN ('active','pending_verify')
                 GROUP BY date, rotation""",
             dates,
         ).fetchall()
-    return {(r["date"], r["rotation"]): {"booked": r["booked"],
-                                          "confirmed_count": r["confirmed_count"]}
+    return {(r["date"], r["rotation"]): {
+                "booked":          r["booked"],
+                "confirmed_count": r["confirmed_count"],
+                "pending_count":   r["pending_count"],
+            }
             for r in rows}
 
 
@@ -269,6 +273,18 @@ def list_reservations_for_date(date: str) -> list[dict]:
             (date,),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def admin_activate_reservation(rid: int) -> None:
+    """Admin manually activates a pending_verify reservation (no token needed)."""
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE reservation SET status='active', email_token=NULL, "
+            "token_expires_at=NULL, updated_at=? "
+            "WHERE id=? AND status='pending_verify'",
+            (now(), rid),
+        )
+        conn.commit()
 
 
 def set_confirmed(rid: int, confirmed: int) -> None:

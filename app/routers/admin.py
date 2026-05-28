@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app import models, services
@@ -129,6 +129,22 @@ async def day_edit_save(request: Request, target_date: str):
 
 
 # ── Reservation operations ────────────────────────────────────────────────────
+
+@router.get("/api/day/{target_date}/config")
+async def day_config_api(target_date: str):
+    """Return whether this date has a 2nd rotation configured (for JS use)."""
+    all_defaults = models.get_all_defaults()
+    cfg = models.get_effective_config(target_date, all_defaults)
+    return JSONResponse({"has_rotation_2": cfg.get("start_time_2") is not None})
+
+
+@router.post("/reservation/{rid}/activate", response_class=HTMLResponse)
+async def reservation_activate(request: Request, rid: int):
+    """Admin manually activates a pending_verify reservation."""
+    form = await request.form()
+    models.admin_activate_reservation(rid)
+    return RedirectResponse(f"/kmb/admin/day/{form['back_date']}", status_code=303)
+
 
 @router.post("/reservation/{rid}/confirm", response_class=HTMLResponse)
 async def reservation_confirm(request: Request, rid: int):
