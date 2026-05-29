@@ -16,7 +16,8 @@
 </div>
 
 {% for day in days %}
-<div style="margin-bottom:8px;border-radius:6px;overflow:hidden;
+<div id="day-{{ day.date }}"
+     style="margin-bottom:8px;border-radius:6px;overflow:hidden;
             border:{{ '2px solid #1a73e8' if day.is_today else '1px solid #ddd' }}">
 
   {# ── 日付ヘッダー ── #}
@@ -37,9 +38,13 @@
     {% endif %}
   </a>
 
-  {# ── 予約内容 ── #}
+  {# ── 予約内容（クリックで詳細へ） ── #}
   {% if not day.is_closed %}
-  <div style="padding:6px 14px 10px;background:{{ '#fafafa' if day.is_past else '#fff' }}">
+  <div onclick="location.href='/kmb/admin/day/{{ day.date }}'"
+       style="padding:6px 14px 10px;cursor:pointer;
+              background:{{ '#fafafa' if day.is_past else '#fff' }}"
+       onmouseover="this.style.filter='brightness(0.97)'"
+       onmouseout="this.style.filter=''">
 
     {% if not day.rotations %}
     <p style="font-size:0.8rem;color:#bbb;margin:4px 0">設定なし</p>
@@ -92,4 +97,22 @@
 
 </div>
 {% endfor %}
+
+<script>
+// ハッシュで指定された日付にスクロール＆ハイライト
+window.addEventListener('load', function () {
+  var hash = window.location.hash;
+  if (!hash || !hash.startsWith('#day-')) return;
+  var el = document.querySelector(hash);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.style.transition = 'outline 0.1s';
+  el.style.outline = '3px solid #1a73e8';
+  el.style.outlineOffset = '2px';
+  setTimeout(function () {
+    el.style.transition = 'outline 1.5s ease';
+    el.style.outline = 'none';
+  }, 1800);
+});
+</script>
 {% endblock %}

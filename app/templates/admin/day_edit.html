@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ target_date }}({{ weekday_name }}) 予約状況{% endblock %}
 {% block header_links %}
-  <a href="/kmb/admin">← カレンダー</a>
+  <a href="/kmb/admin/calendar/{{ target_date[:4] }}/{{ target_date[5:7] | int }}#day-{{ target_date }}">← カレンダー</a>
 {% endblock %}
 {% block content %}
 <h2>{{ target_date }}({{ weekday_name }}) の予約状況</h2>
