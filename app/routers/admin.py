@@ -144,6 +144,45 @@ async def day_config_api(target_date: str):
     })
 
 
+@router.post("/day/{target_date}/reservation", response_class=HTMLResponse)
+async def admin_add_reservation(request: Request, target_date: str):
+    """Admin manually adds a reservation (phone-received) directly as active."""
+    form = await request.form()
+    name  = (form.get("name")  or "").strip()
+    phone = (form.get("phone") or "").strip()
+    email = (form.get("email") or "").strip()
+    note  = (form.get("note")  or "").strip() or None
+
+    errors = []
+    if not name:
+        errors.append("名前は必須です")
+    if not phone:
+        errors.append("電話番号は必須です")
+    try:
+        num_people = int(form.get("num_people") or 1)
+        if num_people < 1:
+            raise ValueError
+    except ValueError:
+        errors.append("人数を正しく入力してください")
+        num_people = 1
+    try:
+        rotation = int(form.get("rotation") or 1)
+    except ValueError:
+        rotation = 1
+
+    if not errors:
+        rid = models.admin_create_reservation(
+            target_date, rotation, name, num_people, phone, email, note
+        )
+        if rid is None:
+            errors.append("席数が不足しています")
+
+    msg = "予約を追加しました" if not errors else "　".join(errors)
+    return RedirectResponse(
+        f"/kmb/admin/day/{target_date}?msg={msg}", status_code=303
+    )
+
+
 @router.post("/reservation/{rid}/activate", response_class=HTMLResponse)
 async def reservation_activate(request: Request, rid: int):
     """Admin manually activates a pending_verify reservation."""
