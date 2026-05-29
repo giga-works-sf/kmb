@@ -1,24 +1,5 @@
 {% extends "base.html" %}
 {% block title %}予約フォーム{% endblock %}
-{% block head %}
-<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-<style>
-  .ts-wrapper.single .ts-control {
-    border:1px solid #ccc; border-radius:4px; padding:7px 10px;
-    font-size:0.9rem; background:#fff;
-  }
-  .ts-wrapper.single.input-active .ts-control { border-color:#1a73e8; }
-  .ts-wrapper { margin-top:4px; }
-  .ts-dropdown {
-    font-size:0.9rem;
-    z-index:9999 !important;
-    position:absolute !important;
-  }
-  /* form-wrap が stacking context を作るため overflow を visible に */
-  .form-wrap { overflow:visible !important; }
-</style>
-{% endblock %}
 {% block content %}
 <h2>ご予約フォーム</h2>
 {% if error %}
@@ -45,7 +26,7 @@
     {% else %}
     <input type="hidden" name="rotation" value="{{ rotations[0].rotation }}">
     <label>開始時間</label>
-    <input type="text" value="{{ rotations[0].time }}〜（残席{{ rotations[0].remaining }}名）" disabled>
+    <input type="text" value="{{ rotations[0].time }}〜（残{{ rotations[0].remaining }}席）" disabled>
     {% endif %}
 
     <label>人数</label>
@@ -58,58 +39,53 @@
     <label>代表者名 <span style="color:red">*</span></label>
     <input type="text" name="name" required placeholder="山田 太郎">
 
-    <label>電話番号 <span style="color:red">*</span><span style="font-size:0.78rem;color:#888;font-weight:normal;margin-left:6px">SMS認証コードを送信します</span></label>
-    <select id="phone-country" name="phone_country">
-      <option value="+81"  selected>🇯🇵 +81  日本 Japan JPN</option>
-      <option value="+1"  >🇺🇸 +1   米国 United States USA</option>
-      <option value="+1"  >🇨🇦 +1   カナダ Canada CAN</option>
-      <option value="+44" >🇬🇧 +44  英国 United Kingdom GBR</option>
-      <option value="+61" >🇦🇺 +61  オーストラリア Australia AUS</option>
-      <option value="+64" >🇳🇿 +64  ニュージーランド New Zealand NZL</option>
-      <option value="+33" >🇫🇷 +33  フランス France FRA</option>
-      <option value="+49" >🇩🇪 +49  ドイツ Germany DEU</option>
-      <option value="+39" >🇮🇹 +39  イタリア Italy ITA</option>
-      <option value="+34" >🇪🇸 +34  スペイン Spain ESP</option>
-      <option value="+31" >🇳🇱 +31  オランダ Netherlands NLD</option>
-      <option value="+32" >🇧🇪 +32  ベルギー Belgium BEL</option>
-      <option value="+41" >🇨🇭 +41  スイス Switzerland CHE</option>
-      <option value="+46" >🇸🇪 +46  スウェーデン Sweden SWE</option>
-      <option value="+47" >🇳🇴 +47  ノルウェー Norway NOR</option>
-      <option value="+45" >🇩🇰 +45  デンマーク Denmark DNK</option>
-      <option value="+358">🇫🇮 +358 フィンランド Finland FIN</option>
-      <option value="+86" >🇨🇳 +86  中国 China CHN</option>
-      <option value="+82" >🇰🇷 +82  韓国 South Korea KOR</option>
-      <option value="+886">🇹🇼 +886 台湾 Taiwan TWN</option>
-      <option value="+852">🇭🇰 +852 香港 Hong Kong HKG</option>
-      <option value="+65" >🇸🇬 +65  シンガポール Singapore SGP</option>
-      <option value="+66" >🇹🇭 +66  タイ Thailand THA</option>
-      <option value="+84" >🇻🇳 +84  ベトナム Vietnam VNM</option>
-      <option value="+62" >🇮🇩 +62  インドネシア Indonesia IDN</option>
-      <option value="+60" >🇲🇾 +60  マレーシア Malaysia MYS</option>
-      <option value="+63" >🇵🇭 +63  フィリピン Philippines PHL</option>
-      <option value="+91" >🇮🇳 +91  インド India IND</option>
-      <option value="+55" >🇧🇷 +55  ブラジル Brazil BRA</option>
-      <option value="+52" >🇲🇽 +52  メキシコ Mexico MEX</option>
-    </select>
+    {# ── 電話番号（国番号 datalist + 番号入力） ── #}
+    <label>電話番号 <span style="color:red">*</span>
+      <span style="font-size:0.78rem;color:#888;font-weight:normal;margin-left:6px">SMS認証コードを送信します</span>
+    </label>
+    <p style="font-size:0.78rem;color:#888;margin:4px 0 2px">
+      国番号（日本は +81）を選択または入力してください。
+      国名・国番号で検索できます（例：タイ、66、Thailand）
+    </p>
+    <input type="text" name="phone_country" id="phone-country-input"
+           list="country-datalist"
+           value="+81"
+           required
+           autocomplete="off"
+           placeholder="+81（日本）"
+           style="margin-bottom:6px">
+    <datalist id="country-datalist">
+      <option value="+81">日本 Japan JPN</option>
+      <option value="+1">米国・カナダ United States Canada USA CAN</option>
+      <option value="+44">英国 United Kingdom GBR</option>
+      <option value="+61">オーストラリア Australia AUS</option>
+      <option value="+64">ニュージーランド New Zealand NZL</option>
+      <option value="+33">フランス France FRA</option>
+      <option value="+49">ドイツ Germany DEU</option>
+      <option value="+39">イタリア Italy ITA</option>
+      <option value="+34">スペイン Spain ESP</option>
+      <option value="+31">オランダ Netherlands NLD</option>
+      <option value="+32">ベルギー Belgium BEL</option>
+      <option value="+41">スイス Switzerland CHE</option>
+      <option value="+46">スウェーデン Sweden SWE</option>
+      <option value="+47">ノルウェー Norway NOR</option>
+      <option value="+45">デンマーク Denmark DNK</option>
+      <option value="+358">フィンランド Finland FIN</option>
+      <option value="+86">中国 China CHN</option>
+      <option value="+82">韓国 South Korea KOR</option>
+      <option value="+886">台湾 Taiwan TWN</option>
+      <option value="+852">香港 Hong Kong HKG</option>
+      <option value="+65">シンガポール Singapore SGP</option>
+      <option value="+66">タイ Thailand THA</option>
+      <option value="+84">ベトナム Vietnam VNM</option>
+      <option value="+62">インドネシア Indonesia IDN</option>
+      <option value="+60">マレーシア Malaysia MYS</option>
+      <option value="+63">フィリピン Philippines PHL</option>
+      <option value="+91">インド India IND</option>
+      <option value="+55">ブラジル Brazil BRA</option>
+      <option value="+52">メキシコ Mexico MEX</option>
+    </datalist>
     <input type="tel" name="phone" required placeholder="090-0000-0000">
-
-<script>
-new TomSelect('#phone-country', {
-  maxOptions: null,
-  placeholder: '国を選択または入力…',
-  create: false,
-  dropdownParent: 'body',   // body 直下に描画してスタッキングコンテキストを回避
-  render: {
-    option: function(data) {
-      return '<div>' + data.text + '</div>';
-    },
-    item: function(data) {
-      var parts = data.text.split(' ');
-      return '<div>' + (parts[0]||'') + ' ' + (parts[1]||'') + '</div>';
-    }
-  }
-});
-</script>
 
     <label>メールアドレス <span style="color:red">*</span></label>
     <input type="email" name="email" required placeholder="example@email.com">
