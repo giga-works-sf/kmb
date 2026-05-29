@@ -98,12 +98,12 @@ new TomSelect('#phone-country', {
   maxOptions: null,
   placeholder: '国を選択または入力…',
   create: false,
+  dropdownParent: 'body',   // body 直下に描画してスタッキングコンテキストを回避
   render: {
     option: function(data) {
       return '<div>' + data.text + '</div>';
     },
     item: function(data) {
-      // 表示は フラグ + コード のみ（日英名は検索用）
       var parts = data.text.split(' ');
       return '<div>' + (parts[0]||'') + ' ' + (parts[1]||'') + '</div>';
     }
