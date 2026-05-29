@@ -251,7 +251,7 @@ async def survey_form(request: Request, rid: int):
 
 
 @router.post("/survey/{rid}", response_class=HTMLResponse)
-async def survey_submit(request: Request, rid: int):
+async def survey_submit(request: Request, rid: int, background_tasks: BackgroundTasks):
     res = models.get_reservation(rid)
     if not res or res["status"] != "active":
         return RedirectResponse("/kmb/")
@@ -274,7 +274,7 @@ async def survey_submit(request: Request, rid: int):
                     start_time=start_time, weekday_name=weekday_name,
                     error="事前振込を選択された場合は振込人名義（カタカナ）を入力してください。")
 
-    models.save_survey(rid, {
+    survey_data = {
         "source":             form.get("source"),
         "source_other":       (form.get("source_other") or "").strip() or None,
         "visit_count":        form.get("visit_count"),
@@ -288,7 +288,14 @@ async def survey_submit(request: Request, rid: int):
         "payment_method":     payment_method,
         "transfer_name":      transfer_name,
         "terms_agreed":       1,
-    })
+    }
+    models.save_survey(rid, survey_data)
+
+    # アンケート完了後の確認メールをバックグラウンドで送信
+    all_defaults = models.get_all_defaults()
+    cfg = models.get_effective_config(res["date"], all_defaults)
+    background_tasks.add_task(mailer.send_booking_confirmed, res, cfg, survey_data)
+
     return RedirectResponse(f"/kmb/verified/{rid}", status_code=303)
 
 

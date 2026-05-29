@@ -52,6 +52,59 @@ def send_verification(reservation: dict, effective_cfg: dict, token: str) -> Non
     _dispatch(msg, reservation["id"])
 
 
+def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict | None) -> None:
+    """Send booking confirmation email to customer after survey completion."""
+    course = effective_cfg.get("course")
+    rotation = reservation["rotation"]
+    start_time = (effective_cfg["start_time_1"] if rotation == 1
+                  else effective_cfg["start_time_2"])
+
+    weekday = _WEEKDAY_NAMES[_date_cls.fromisoformat(reservation["date"]).weekday()]
+    date_str = f"{reservation['date']}（{weekday}）"
+
+    # 支払い方法
+    if survey:
+        pm = survey.get("payment_method")
+        if pm == "transfer":
+            payment_line = f"お支払い方法: 事前振込割　8,800円\n振込人名義　: {survey.get('transfer_name') or ''}\n"
+        elif pm == "in_store":
+            payment_line = "お支払い方法: 店頭払い　9,000円（キャッシュレスのみ）\n"
+        else:
+            payment_line = ""
+    else:
+        payment_line = ""
+
+    body = (
+        f"【予約確定】{SHOP_NAME}\n\n"
+        f"{reservation['name']} 様\n\n"
+        f"ご予約が確定しました。当日のご来店をお待ちしております。\n\n"
+        f"──── ご予約内容 ────\n"
+        f"日付　　: {date_str}\n"
+        f"開始時間: {start_time}\n"
+        f"人数　　: {reservation['num_people']}名\n"
+        f"代表者名: {reservation['name']} 様\n"
+        f"電話番号: {format_phone_display(reservation['phone'])}\n"
+    )
+    if payment_line:
+        body += payment_line
+    if course:
+        body += f"\n【コース内容】\n{course}\n"
+    body += (
+        f"\n──── キャンセルポリシー ────\n"
+        f"キャンセル・人数変更は【7日前まで】にお電話にてご連絡ください。\n"
+        f"6〜3日前: 50% ／ 2〜1日前: 80% ／ 当日: 100%\n\n"
+        f"{SHOP_NAME}\n"
+    )
+
+    msg = EmailMessage()
+    msg["Subject"] = f"【予約確定】{date_str} {start_time}〜 {SHOP_NAME}"
+    msg["From"]    = MAIL_FROM or "noreply@example.com"
+    msg["To"]      = reservation["email"]
+    msg.set_content(body)
+
+    _dispatch(msg, reservation["id"])
+
+
 def send_admin_notification(reservation: dict, effective_cfg: dict) -> None:
     """Notify admin of a new booking request. No-op if ADMIN_EMAIL is unset."""
     if not ADMIN_EMAIL:
