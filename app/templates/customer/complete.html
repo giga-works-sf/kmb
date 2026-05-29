@@ -40,7 +40,7 @@
     <tr><td style="padding:6px 0;color:#666">代表者名</td>
         <td>{{ res.name }} 様</td></tr>
     <tr><td style="padding:6px 0;color:#666">電話番号</td>
-        <td>{{ res.phone }}</td></tr>
+        <td>{{ res.phone | format_phone }}</td></tr>
     {% if res.note %}
     <tr><td style="padding:6px 0;color:#666">備考</td>
         <td>{{ res.note }}</td></tr>

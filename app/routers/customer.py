@@ -23,6 +23,8 @@ def _get_client_ip(request: Request) -> str:
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
+from app.sms import format_phone_display
+templates.env.filters["format_phone"] = format_phone_display
 _COMMON = {"shop_name": SHOP_NAME}
 _WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
 
@@ -264,8 +266,9 @@ async def survey_submit(request: Request, rid: int):
         "disliked_food":      (form.get("disliked_food") or "").strip() or None,
         "nonalcoholic_count": int(form.get("nonalcoholic_count") or 0),
         "info_preference":    form.get("info_preference"),
-        "info_other":         (form.get("info_other") or "").strip() or None,
         "other_questions":    (form.get("other_questions") or "").strip() or None,
+        "payment_method":     form.get("payment_method"),
+        "transfer_name":      (form.get("transfer_name") or "").strip() or None,
         "terms_agreed":       1,
     })
     return RedirectResponse(f"/kmb/verified/{rid}", status_code=303)

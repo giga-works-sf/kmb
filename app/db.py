@@ -43,6 +43,8 @@ def init_db() -> None:
             "ALTER TABLE reservation ADD COLUMN email_token TEXT",
             "ALTER TABLE reservation ADD COLUMN token_expires_at TEXT",
             "ALTER TABLE reservation RENAME COLUMN email_token TO verification_token",
+            "ALTER TABLE survey_response ADD COLUMN payment_method TEXT",
+            "ALTER TABLE survey_response ADD COLUMN transfer_name TEXT",
         ]:
             try:
                 conn.execute(sql)

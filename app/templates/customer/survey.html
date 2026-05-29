@@ -18,12 +18,47 @@
 <div class="form-wrap" style="max-width:600px">
 <form method="post" action="/kmb/survey/{{ res.id }}">
 
+{# ── Q0 お支払い方法 ── #}
+{% set sv = survey %}
+<fieldset style="border:2px solid #1a73e8;border-radius:6px;padding:16px;margin-bottom:20px">
+  <legend style="font-size:0.9rem;font-weight:600;padding:0 8px;color:#1a73e8">
+    希望のお支払い方法<span style="color:red">*</span>
+  </legend>
+  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
+    <input type="radio" name="payment_method" value="in_store" required
+           style="width:auto;margin:0;padding:0"
+           {{ 'checked' if sv and sv.payment_method == 'in_store' }}
+           onchange="document.getElementById('transfer_wrap').style.display='none'">
+    店頭払い　9,000円（キャッシュレスのみ）
+  </label>
+  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
+    <input type="radio" name="payment_method" value="transfer" required
+           style="width:auto;margin:0;padding:0"
+           {{ 'checked' if sv and sv.payment_method == 'transfer' }}
+           onchange="document.getElementById('transfer_wrap').style.display='block'">
+    事前振込割　8,800円
+  </label>
+  <div id="transfer_wrap"
+       style="display:{{ 'block' if sv and sv.payment_method == 'transfer' else 'none' }};
+              margin-top:14px;padding:14px;background:#f0f4ff;border-radius:6px">
+    <p style="font-size:0.88rem;font-weight:600;margin-bottom:8px">【振込先】</p>
+    <p style="font-size:0.85rem;line-height:1.9;margin:0">
+      三井住友銀行　福岡支店　店番号 701<br>
+      普通　口座番号 8239815<br>
+      KMB クリエイティブ
+    </p>
+    <label style="margin-top:12px">振込人名義（カタカナ）<span style="color:red">*</span></label>
+    <input type="text" name="transfer_name" placeholder="ヤマダ タロウ"
+           style="margin-top:4px"
+           value="{{ sv.transfer_name if sv else '' }}">
+  </div>
+</fieldset>
+
 {# ── Q1 来店経緯 ── #}
 <fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
   <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
     どちらで KMB をお知りになりましたか？<span style="color:red">*</span>
   </legend>
-  {% set sv = survey %}
   {% for val, label in [('terujii','てるじい経由'),('ourdays','OURDAYS さん経由'),('yukawa','湯川シェフ経由'),('other','その他')] %}
   <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
     <input type="radio" name="source" value="{{ val }}" required
@@ -71,29 +106,26 @@
 
 {# ── Q4 楽しみ ── #}
 <div style="margin-bottom:20px">
-  <label style="margin-top:0">特に何を楽しみにされていますか？</label>
-  <textarea name="looking_forward" rows="3"
-            placeholder="ワイン・料理・雰囲気など">{{ sv.looking_forward if sv else '' }}</textarea>
+  <label style="margin-top:0">特に何を楽しみにされていますか？（空欄可）</label>
+  <textarea name="looking_forward" rows="3">{{ sv.looking_forward if sv else '' }}</textarea>
 </div>
 
 {# ── Q5 アレルギー ── #}
 <div style="margin-bottom:20px">
-  <label style="margin-top:0">アレルギーはございますか？</label>
+  <label style="margin-top:0">アレルギーはございますか？（空欄可）</label>
   <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
     ◆ メニュー決定後の変更はできませんのでご了承ください。
   </p>
-  <textarea name="allergy" rows="2"
-            placeholder="ない場合は「なし」とご記入ください">{{ sv.allergy if sv else '' }}</textarea>
+  <textarea name="allergy" rows="2">{{ sv.allergy if sv else '' }}</textarea>
 </div>
 
 {# ── Q6 苦手食材 ── #}
 <div style="margin-bottom:20px">
-  <label style="margin-top:0">苦手な食材はございますか？</label>
-  <p style="font-size:0.8rem;color:#888;margin:4px 0 4px">
+  <label style="margin-top:0">苦手な食材はございますか？（空欄可）</label>
+  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
     ※ 100% 使用しないということではありませんが、可能な限り対応させていただきます。
   </p>
-  <textarea name="disliked_food" rows="2"
-            placeholder="ない場合は「なし」とご記入ください">{{ sv.disliked_food if sv else '' }}</textarea>
+  <textarea name="disliked_food" rows="2">{{ sv.disliked_food if sv else '' }}</textarea>
 </div>
 
 {# ── Q7 ノンアルカクテル ── #}
@@ -118,13 +150,11 @@
       ('none',  '希望しない'),
       ('email', 'メールを希望する'),
       ('line',  '「てるじいイベント案内LINE公式グループ」に参加希望'),
-      ('other', 'その他'),
   ] %}
   <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
     <input type="radio" name="info_preference" value="{{ val }}" required
            style="width:auto;margin-top:3px;flex-shrink:0;padding:0"
-           {{ 'checked' if sv and sv.info_preference == val }}
-           onchange="document.getElementById('info_other_wrap').style.display = (this.value==='other'?'block':'none')">
+           {{ 'checked' if sv and sv.info_preference == val }}>
     <span>
       {{ label }}
       {% if val == 'line' %}
@@ -134,10 +164,6 @@
     </span>
   </label>
   {% endfor %}
-  <div id="info_other_wrap" style="display:{{ 'block' if sv and sv.info_preference == 'other' else 'none' }};margin-top:8px">
-    <textarea name="info_other" rows="2" placeholder="詳しく教えてください"
-              style="margin-top:0">{{ sv.info_other if sv else '' }}</textarea>
-  </div>
 </fieldset>
 
 {# ── Q9 その他 ── #}

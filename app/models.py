@@ -416,9 +416,10 @@ def save_survey(rid: int, data: dict) -> None:
             INSERT INTO survey_response
                 (reservation_id, source, source_other, visit_count, is_member,
                  looking_forward, allergy, disliked_food, nonalcoholic_count,
-                 info_preference, info_other, other_questions, terms_agreed,
+                 info_preference, info_other, other_questions,
+                 payment_method, transfer_name, terms_agreed,
                  created_at, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(reservation_id) DO UPDATE SET
                 source=excluded.source,
                 source_other=excluded.source_other,
@@ -431,6 +432,8 @@ def save_survey(rid: int, data: dict) -> None:
                 info_preference=excluded.info_preference,
                 info_other=excluded.info_other,
                 other_questions=excluded.other_questions,
+                payment_method=excluded.payment_method,
+                transfer_name=excluded.transfer_name,
                 terms_agreed=excluded.terms_agreed,
                 updated_at=excluded.updated_at
         """, (
@@ -444,6 +447,8 @@ def save_survey(rid: int, data: dict) -> None:
             int(data.get("nonalcoholic_count") or 0),
             data.get("info_preference"), data.get("info_other"),
             data.get("other_questions") or None,
+            data.get("payment_method"),
+            data.get("transfer_name") or None,
             int(data.get("terms_agreed") or 0),
             ts, ts,
         ))

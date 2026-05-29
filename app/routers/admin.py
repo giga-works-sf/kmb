@@ -18,6 +18,8 @@ from app.config import SHOP_NAME, CALENDAR_START, CALENDAR_END, get_time_slots
 
 router = APIRouter(dependencies=[Depends(require_admin)])
 templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
+from app.sms import format_phone_display
+templates.env.filters["format_phone"] = format_phone_display
 _SLOTS = get_time_slots()
 _COMMON = {"shop_name": SHOP_NAME}
 _WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]

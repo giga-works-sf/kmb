@@ -44,6 +44,26 @@ def to_e164(country_code: str, local_phone: str) -> str:
     return code + digits
 
 
+def format_phone_display(phone: str) -> str:
+    """Format stored phone for human-readable display.
+    +819012345678 → 090-1234-5678  (Japanese +81)
+    Other country codes are shown as-is."""
+    if not phone:
+        return phone
+    if phone.startswith("+81"):
+        local = "0" + phone[3:]
+        digits = re.sub(r"[^0-9]", "", local)
+        n = len(digits)
+        if n == 11:  # 携帯 090/080/070
+            return f"{digits[:3]}-{digits[3:7]}-{digits[7:]}"
+        if n == 10:
+            if digits[:2] in ("03", "06"):  # 大都市固定
+                return f"{digits[:2]}-{digits[2:6]}-{digits[6:]}"
+            return f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
+        return local  # それ以外はそのまま
+    return phone  # 海外番号はそのまま
+
+
 def mask_phone(phone: str) -> str:
     """Return masked phone for display. +819012345678 → +81 ***-****-5678"""
     if phone.startswith("+"):
