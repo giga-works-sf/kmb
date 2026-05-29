@@ -2,10 +2,10 @@
 {% block title %}予約フォーム{% endblock %}
 {% block content %}
 
-{# ── 言語切り替えボタン ── #}
+{# ── 言語切り替えボタン（一時非表示） ── #}
 <div style="text-align:right;margin-bottom:8px">
   <button id="lang-toggle" onclick="toggleLang()"
-          style="background:none;border:1px solid #aaa;border-radius:4px;
+          style="display:none;background:none;border:1px solid #aaa;border-radius:4px;
                  padding:4px 14px;font-size:0.82rem;cursor:pointer;color:#555">
     English
   </button>
@@ -25,18 +25,24 @@
 
     {% if rotations | length > 1 %}
     <label><span class="t" data-ja="開始時間" data-en="Start Time">開始時間</span></label>
-    <select name="rotation">
+    <select id="rotation-select" name="rotation">
       {% for r in rotations %}
       <option value="{{ r.rotation }}"
+              data-time="{{ r.time }}"
+              data-remaining="{{ r.remaining }}"
         {% if r.rotation == selected_rotation %}selected{% endif %}>
-        {{ r.time }}〜（<span class="t" data-ja="残" data-en=""></span>{{ r.remaining }}<span class="t" data-ja="席" data-en=" seats left">席</span>）
+        {{ r.time }}〜（残{{ r.remaining }}席）
       </option>
       {% endfor %}
     </select>
     {% else %}
     <input type="hidden" name="rotation" value="{{ rotations[0].rotation }}">
     <label><span class="t" data-ja="開始時間" data-en="Start Time">開始時間</span></label>
-    <input type="text" value="{{ rotations[0].time }}〜（残{{ rotations[0].remaining }}席）" disabled>
+    <input id="rotation-display"
+           data-time="{{ rotations[0].time }}"
+           data-remaining="{{ rotations[0].remaining }}"
+           type="text"
+           value="{{ rotations[0].time }}〜（残{{ rotations[0].remaining }}席）" disabled>
     {% endif %}
 
     <label><span class="t" data-ja="人数" data-en="No. of Guests">人数</span></label>
@@ -128,9 +134,35 @@
   var lang = localStorage.getItem('kmb_lang') || 'ja';
 
   function applyLang(l) {
+    // 通常ラベル翻訳
     document.querySelectorAll('.t[data-' + l + ']').forEach(function(el) {
       el.textContent = el.getAttribute('data-' + l);
     });
+
+    // 回転セレクトの選択肢テキスト（option内はspanが効かないためJS処理）
+    var rotSel = document.getElementById('rotation-select');
+    if (rotSel) {
+      Array.from(rotSel.options).forEach(function(opt) {
+        var time = opt.getAttribute('data-time');
+        var rem  = opt.getAttribute('data-remaining');
+        if (time && rem !== null) {
+          opt.textContent = l === 'en'
+            ? time + '〜 (' + rem + ' seats left)'
+            : time + '〜（残' + rem + '席）';
+        }
+      });
+    }
+
+    // 回転テキスト（1回転のみのdisabled input）
+    var rotDisp = document.getElementById('rotation-display');
+    if (rotDisp) {
+      var t = rotDisp.getAttribute('data-time');
+      var r = rotDisp.getAttribute('data-remaining');
+      rotDisp.value = l === 'en'
+        ? t + '〜 (' + r + ' seats left)'
+        : t + '〜（残' + r + '席）';
+    }
+
     var btn = document.getElementById('lang-toggle');
     if (btn) btn.textContent = (l === 'ja') ? 'English' : '日本語';
     localStorage.setItem('kmb_lang', l);
