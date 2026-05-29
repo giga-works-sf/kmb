@@ -131,13 +131,24 @@
 
 <script>
 (function() {
-  var lang = localStorage.getItem('kmb_lang') || 'ja';
+  // ボタン非表示中は常に日本語固定。localStorage の古い設定は無視する。
+  var lang = 'ja';
+  localStorage.removeItem('kmb_lang');
 
   function applyLang(l) {
     // 通常ラベル翻訳
     document.querySelectorAll('.t[data-' + l + ']').forEach(function(el) {
       el.textContent = el.getAttribute('data-' + l);
     });
+
+    // 人数セレクト（option内はspanが効かないためJS処理）
+    var nppSel = document.getElementById('num-people-select');
+    if (nppSel) {
+      Array.from(nppSel.options).forEach(function(opt) {
+        var n = opt.getAttribute('data-num');
+        if (n) opt.textContent = l === 'en' ? n + ' person(s)' : n + '名';
+      });
+    }
 
     // 回転セレクトの選択肢テキスト（option内はspanが効かないためJS処理）
     var rotSel = document.getElementById('rotation-select');
@@ -173,8 +184,7 @@
     applyLang(lang === 'ja' ? 'en' : 'ja');
   };
 
-  // ページ初期表示
-  if (lang === 'en') applyLang('en');
+  // 初期表示は常に日本語（applyLang不要 — HTMLがすでに日本語で書かれているため）
 })();
 </script>
 {% endblock %}
