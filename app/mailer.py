@@ -7,6 +7,7 @@ from email.message import EmailMessage
 
 from app.config import (MAIL_RELAY_HOST, MAIL_RELAY_PORT,
                          MAIL_FROM, SHOP_NAME, OUTBOX_DIR, ADMIN_EMAIL)
+from app.sms import format_phone_display
 
 _WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ def send_verification(reservation: dict, effective_cfg: dict, token: str) -> Non
         f"開始時間: {start_time}\n"
         f"人数　　: {reservation['num_people']}名\n"
         f"代表者名: {reservation['name']} 様\n"
-        f"電話番号: {reservation['phone']}\n"
+        f"電話番号: {format_phone_display(reservation['phone'])}\n"
     )
     if reservation.get("note"):
         body += f"備考　　: {reservation['note']}\n"
@@ -69,7 +70,7 @@ def send_admin_notification(reservation: dict, effective_cfg: dict) -> None:
         f"開始時間: {start_time}\n"
         f"人数　　: {reservation['num_people']}名\n"
         f"代表者名: {reservation['name']} 様\n"
-        f"電話番号: {reservation['phone']}\n"
+        f"電話番号: {format_phone_display(reservation['phone'])}\n"
         f"メール　: {reservation.get('email','')}\n"
     )
     if reservation.get("note"):

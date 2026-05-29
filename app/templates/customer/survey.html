@@ -50,7 +50,7 @@
     <label style="margin-top:12px">振込人名義（カタカナ）<span style="color:red">*</span></label>
     <input type="text" name="transfer_name" placeholder="ヤマダ タロウ"
            style="margin-top:4px"
-           value="{{ sv.transfer_name if sv else '' }}">
+           value="{{ (sv.transfer_name or '') if sv else '' }}">
   </div>
 </fieldset>
 
@@ -70,7 +70,7 @@
   {% endfor %}
   <div id="source_other_wrap" style="display:{{ 'block' if sv and sv.source == 'other' else 'none' }};margin-top:8px">
     <textarea name="source_other" rows="2" placeholder="詳しく教えてください"
-              style="margin-top:0">{{ sv.source_other if sv else '' }}</textarea>
+              style="margin-top:0">{{ (sv.source_other or '') if sv else '' }}</textarea>
   </div>
 </fieldset>
 
@@ -104,44 +104,7 @@
   {% endfor %}
 </fieldset>
 
-{# ── Q4 楽しみ ── #}
-<div style="margin-bottom:20px">
-  <label style="margin-top:0">特に何を楽しみにされていますか？（空欄可）</label>
-  <textarea name="looking_forward" rows="3">{{ sv.looking_forward if sv else '' }}</textarea>
-</div>
-
-{# ── Q5 アレルギー ── #}
-<div style="margin-bottom:20px">
-  <label style="margin-top:0">アレルギーはございますか？（空欄可）</label>
-  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
-    ◆ メニュー決定後の変更はできませんのでご了承ください。
-  </p>
-  <textarea name="allergy" rows="2">{{ sv.allergy if sv else '' }}</textarea>
-</div>
-
-{# ── Q6 苦手食材 ── #}
-<div style="margin-bottom:20px">
-  <label style="margin-top:0">苦手な食材はございますか？（空欄可）</label>
-  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
-    ※ 100% 使用しないということではありませんが、可能な限り対応させていただきます。
-  </p>
-  <textarea name="disliked_food" rows="2">{{ sv.disliked_food if sv else '' }}</textarea>
-</div>
-
-{# ── Q7 ノンアルカクテル ── #}
-<div style="margin-bottom:20px">
-  <label style="margin-top:0">ノンアルカクテル希望人数</label>
-  <p style="font-size:0.8rem;color:#555;margin:4px 0 4px">
-    アルコールが飲めない方には【オリジナルノンアルカクテル】を数種類ご用意します。<br>
-    希望される場合は人数をご記入ください。<br>
-    <span style="color:#c62828">◆ 事前の仕込みが必要ですので、急な対応はできかねます。</span>
-  </p>
-  <input type="number" name="nonalcoholic_count" min="0" value="{{ sv.nonalcoholic_count if sv else 0 }}"
-         style="width:100px">
-  <span style="font-size:0.88rem;color:#666;margin-left:6px">名（0 = 希望なし）</span>
-</div>
-
-{# ── Q8 情報配信 ── #}
+{# ── Q4 情報配信（会員の直後に移動） ── #}
 <fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
   <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
     今後、イベントやお得な情報をご希望されますか？<span style="color:red">*</span>
@@ -166,11 +129,48 @@
   {% endfor %}
 </fieldset>
 
+{# ── Q5 楽しみ ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">特に何を楽しみにされていますか？（空欄可）</label>
+  <textarea name="looking_forward" rows="3">{{ (sv.looking_forward or '') if sv else '' }}</textarea>
+</div>
+
+{# ── Q6 アレルギー ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">アレルギーはございますか？（空欄可）</label>
+  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
+    ◆ メニュー決定後の変更はできませんのでご了承ください。
+  </p>
+  <textarea name="allergy" rows="2">{{ (sv.allergy or '') if sv else '' }}</textarea>
+</div>
+
+{# ── Q7 苦手食材 ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">苦手な食材はございますか？（空欄可）</label>
+  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
+    ※ 100% 使用しないということではありませんが、可能な限り対応させていただきます。
+  </p>
+  <textarea name="disliked_food" rows="2">{{ (sv.disliked_food or '') if sv else '' }}</textarea>
+</div>
+
+{# ── Q8 ノンアルカクテル ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">ノンアルカクテル希望人数</label>
+  <p style="font-size:0.8rem;color:#555;margin:4px 0 4px">
+    アルコールが飲めない方には【オリジナルノンアルカクテル】を数種類ご用意します。<br>
+    希望される場合は人数をご記入ください。<br>
+    <span style="color:#c62828">◆ 事前の仕込みが必要ですので、急な対応はできかねます。</span>
+  </p>
+  <input type="number" name="nonalcoholic_count" min="0" value="{{ sv.nonalcoholic_count if sv else 0 }}"
+         style="width:100px">
+  <span style="font-size:0.88rem;color:#666;margin-left:6px">名（0 = 希望なし）</span>
+</div>
+
 {# ── Q9 その他 ── #}
 <div style="margin-bottom:24px">
   <label style="margin-top:0">その他ご質問があればお気軽にどうぞ</label>
   <textarea name="other_questions" rows="3"
-            placeholder="何でもどうぞ">{{ sv.other_questions if sv else '' }}</textarea>
+            placeholder="何でもどうぞ">{{ (sv.other_questions or '') if sv else '' }}</textarea>
 </div>
 
 {# ── 規約同意 ── #}
