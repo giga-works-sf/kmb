@@ -46,9 +46,9 @@
     {% endif %}
 
     <label><span class="t" data-ja="人数" data-en="No. of Guests">人数</span></label>
-    <select name="num_people">
+    <select id="num-people-select" name="num_people">
       {% for i in range(1, remaining + 1) %}
-      <option value="{{ i }}">{{ i }}<span class="t" data-ja="名" data-en=" person(s)">名</span></option>
+      <option value="{{ i }}" data-num="{{ i }}">{{ i }}名</option>
       {% endfor %}
     </select>
 
