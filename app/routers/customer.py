@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import re
 from datetime import date
 from pathlib import Path
@@ -10,6 +11,15 @@ from fastapi.templating import Jinja2Templates
 
 from app import models, services, mailer, sms
 from app.config import SHOP_NAME, NOTE_MAX_LEN, CALENDAR_START, CALENDAR_END, USE_SMS_VERIFICATION
+
+logger = logging.getLogger(__name__)
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host or "unknown"
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templates"))
@@ -127,6 +137,20 @@ async def booking_submit(
                     remaining=sel["remaining"] if sel else 0,
                     error=" / ".join(errors))
 
+    # IP ベースのレート制限
+    client_ip = _get_client_ip(request)
+    if not models.check_rate_limit(client_ip):
+        logger.warning("Rate limit exceeded: ip=%s", client_ip)
+        weekday_name = _WEEKDAY_NAMES[d.weekday()]
+        rotations = _available_rotations(target_date, all_defaults)
+        sel = next((r for r in rotations if r["rotation"] == rotation),
+                   rotations[0] if rotations else None)
+        return _tpl("customer/booking.html", request,
+                    target_date=target_date, weekday_name=weekday_name, cfg=cfg,
+                    rotations=rotations, selected_rotation=rotation,
+                    remaining=sel["remaining"] if sel else 0,
+                    error="1日の予約リクエスト上限（5回）に達しました。お電話にてお問い合わせください。")
+
     phone_e164 = sms.to_e164(phone_country, phone)
 
     rid = models.create_reservation(
@@ -145,6 +169,10 @@ async def booking_submit(
                     remaining=sel["remaining"] if sel else 0,
                     error="申し訳ありません、ご希望の人数分の空席がなくなりました。")
 
+    res = models.get_reservation(rid)
+    # 管理者に通知
+    mailer.send_admin_notification(res, cfg)
+
     if USE_SMS_VERIFICATION:
         # SMS 認証フロー
         dev_code = sms.send_otp(phone_e164)
@@ -152,7 +180,7 @@ async def booking_submit(
         return RedirectResponse(f"/kmb/verify-sms/{rid}", status_code=303)
     else:
         # メール認証フロー（デフォルト）
-        token = models.store_email_token(rid)
+        token = models.store_verification_token(rid)
         res = models.get_reservation(rid)
         mailer.send_verification(res, cfg, token)
         return RedirectResponse(f"/kmb/complete/{rid}", status_code=303)
@@ -182,7 +210,7 @@ async def verify_sms_submit(request: Request, rid: int):
     if not res or res["status"] != "pending_verify":
         return RedirectResponse("/kmb/")
 
-    dev_code = res.get("email_token")  # None in production, plaintext in dev mode
+    dev_code = res.get("verification_token")  # None in production, plaintext in dev mode
     ok = sms.check_otp(res["phone"], code, dev_code)
 
     if not ok:
@@ -197,12 +225,72 @@ async def verify_sms_submit(request: Request, rid: int):
                     error="有効期限が切れています。「コードを再送」してください。",
                     expired=True, resent=False)
 
+    return RedirectResponse(f"/kmb/survey/{activated['id']}", status_code=303)
+
+
+@router.get("/survey/{rid}", response_class=HTMLResponse)
+async def survey_form(request: Request, rid: int):
+    res = models.get_reservation(rid)
+    if not res or res["status"] != "active":
+        return RedirectResponse("/kmb/")
+    today = date.today()
+    res_date = date.fromisoformat(res["date"])
+    can_edit = res_date >= today
+    survey = models.get_survey(rid)
     all_defaults = models.get_all_defaults()
-    cfg = models.get_effective_config(activated["date"], all_defaults)
-    start_time = cfg["start_time_1"] if activated["rotation"] == 1 else cfg["start_time_2"]
-    weekday_name = _WEEKDAY_NAMES[date.fromisoformat(activated["date"]).weekday()]
+    cfg = models.get_effective_config(res["date"], all_defaults)
+    start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
+    weekday_name = _WEEKDAY_NAMES[res_date.weekday()]
+    return _tpl("customer/survey.html", request,
+                res=res, survey=survey, can_edit=can_edit,
+                start_time=start_time, weekday_name=weekday_name)
+
+
+@router.post("/survey/{rid}", response_class=HTMLResponse)
+async def survey_submit(request: Request, rid: int):
+    res = models.get_reservation(rid)
+    if not res or res["status"] != "active":
+        return RedirectResponse("/kmb/")
+    if date.fromisoformat(res["date"]) < date.today():
+        return RedirectResponse(f"/kmb/verified/{rid}")
+    form = await request.form()
+    models.save_survey(rid, {
+        "source":             form.get("source"),
+        "source_other":       (form.get("source_other") or "").strip() or None,
+        "visit_count":        form.get("visit_count"),
+        "is_member":          1 if form.get("is_member") == "1" else 0,
+        "looking_forward":    (form.get("looking_forward") or "").strip() or None,
+        "allergy":            (form.get("allergy") or "").strip() or None,
+        "disliked_food":      (form.get("disliked_food") or "").strip() or None,
+        "nonalcoholic_count": int(form.get("nonalcoholic_count") or 0),
+        "info_preference":    form.get("info_preference"),
+        "info_other":         (form.get("info_other") or "").strip() or None,
+        "other_questions":    (form.get("other_questions") or "").strip() or None,
+        "terms_agreed":       1,
+    })
+    return RedirectResponse(f"/kmb/verified/{rid}", status_code=303)
+
+
+@router.get("/verified/{rid}", response_class=HTMLResponse)
+async def verified_page(request: Request, rid: int):
+    res = models.get_reservation(rid)
+    if not res or res["status"] != "active":
+        return RedirectResponse("/kmb/")
+    today = date.today()
+    res_date = date.fromisoformat(res["date"])
+    survey = models.get_survey(rid)
+    # アンケート未回答かつ未来日は必須
+    if not survey and res_date >= today:
+        return RedirectResponse(f"/kmb/survey/{rid}")
+    all_defaults = models.get_all_defaults()
+    cfg = models.get_effective_config(res["date"], all_defaults)
+    start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
+    weekday_name = _WEEKDAY_NAMES[res_date.weekday()]
+    can_edit_survey = res_date >= today
     return _tpl("customer/verified.html", request,
-                res=activated, cfg=cfg, start_time=start_time, weekday_name=weekday_name)
+                res=res, cfg=cfg, start_time=start_time,
+                weekday_name=weekday_name, rid=rid,
+                can_edit_survey=can_edit_survey)
 
 
 @router.post("/verify-sms/{rid}/resend", response_class=HTMLResponse)
@@ -216,7 +304,7 @@ async def verify_sms_resend(request: Request, rid: int):
 
 
 @router.get("/complete/{rid}", response_class=HTMLResponse)
-async def booking_complete(request: Request, rid: int):
+async def booking_complete(request: Request, rid: int, resent: bool = False):
     res = models.get_reservation(rid)
     if not res or res["status"] not in ("active", "pending_verify"):
         return RedirectResponse("/kmb/")
@@ -225,7 +313,21 @@ async def booking_complete(request: Request, rid: int):
     start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
     weekday_name = _WEEKDAY_NAMES[date.fromisoformat(res["date"]).weekday()]
     return _tpl("customer/complete.html", request,
-                res=res, cfg=cfg, start_time=start_time, weekday_name=weekday_name)
+                res=res, cfg=cfg, start_time=start_time,
+                weekday_name=weekday_name, resent=resent)
+
+
+@router.post("/resend-email/{rid}", response_class=HTMLResponse)
+async def resend_email(request: Request, rid: int):
+    res = models.get_reservation(rid)
+    if not res or res["status"] != "pending_verify":
+        return RedirectResponse("/kmb/")
+    all_defaults = models.get_all_defaults()
+    cfg = models.get_effective_config(res["date"], all_defaults)
+    token = models.store_verification_token(rid)
+    mailer.send_verification(res, cfg, token)
+    logger.info("Email verification resent: rid=%s", rid)
+    return RedirectResponse(f"/kmb/complete/{rid}?resent=true", status_code=303)
 
 
 @router.get("/verify/{token}", response_class=HTMLResponse)
@@ -233,12 +335,7 @@ async def verify_email(request: Request, token: str):
     res = models.activate_by_token(token)
     if res is None:
         return _tpl("customer/verify_error.html", request)
-    all_defaults = models.get_all_defaults()
-    cfg = models.get_effective_config(res["date"], all_defaults)
-    start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
-    weekday_name = _WEEKDAY_NAMES[date.fromisoformat(res["date"]).weekday()]
-    return _tpl("customer/verified.html", request,
-                res=res, cfg=cfg, start_time=start_time, weekday_name=weekday_name)
+    return RedirectResponse(f"/kmb/survey/{res['id']}", status_code=303)
 
 
 def _available_rotations(target_date: str, cfg: dict) -> list[dict]:

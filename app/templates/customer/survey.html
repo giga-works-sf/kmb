@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}来店前アンケート{% endblock %}
+{% block content %}
+<h2>来店前アンケート</h2>
+<p style="font-size:0.85rem;color:#555;margin-bottom:4px">
+  {{ res.date }}（{{ weekday_name }}） {{ start_time }}〜 / {{ res.name }} 様
+</p>
+
+{% if not can_edit %}
+<div class="msg-err">過去の日付のアンケートは変更できません。</div>
+{% else %}
+
+<p style="font-size:0.85rem;color:#888;margin-bottom:20px">
+  ご予約内容の確認とともに、以下のアンケートへのご回答をお願いいたします。<br>
+  すべての項目にお答えください。
+</p>
+
+<div class="form-wrap" style="max-width:600px">
+<form method="post" action="/kmb/survey/{{ res.id }}">
+
+{# ── Q1 来店経緯 ── #}
+<fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
+  <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
+    どちらで KMB をお知りになりましたか？<span style="color:red">*</span>
+  </legend>
+  {% set sv = survey %}
+  {% for val, label in [('terujii','てるじい経由'),('ourdays','OURDAYS さん経由'),('yukawa','湯川シェフ経由'),('other','その他')] %}
+  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
+    <input type="radio" name="source" value="{{ val }}" required
+           style="width:auto;margin:0;padding:0"
+           {{ 'checked' if sv and sv.source == val }}
+           onchange="document.getElementById('source_other_wrap').style.display = (this.value==='other'?'block':'none')">
+    {{ label }}
+  </label>
+  {% endfor %}
+  <div id="source_other_wrap" style="display:{{ 'block' if sv and sv.source == 'other' else 'none' }};margin-top:8px">
+    <textarea name="source_other" rows="2" placeholder="詳しく教えてください"
+              style="margin-top:0">{{ sv.source_other if sv else '' }}</textarea>
+  </div>
+</fieldset>
+
+{# ── Q2 来店回数 ── #}
+<fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
+  <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
+    KMB こめむぎぶどう のご利用は何回目ですか？<span style="color:red">*</span>
+  </legend>
+  {% for val, label in [('first','はじめて'),('2nd','２回目'),('3rd_plus','３回目以上')] %}
+  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
+    <input type="radio" name="visit_count" value="{{ val }}" required
+           style="width:auto;margin:0;padding:0"
+           {{ 'checked' if sv and sv.visit_count == val }}>
+    {{ label }}
+  </label>
+  {% endfor %}
+</fieldset>
+
+{# ── Q3 会員 ── #}
+<fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
+  <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
+    KMB こめむぎぶどう の会員様ですか？<span style="color:red">*</span>
+  </legend>
+  {% for val, label in [('1','はい'),('0','いいえ')] %}
+  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
+    <input type="radio" name="is_member" value="{{ val }}" required
+           style="width:auto;margin:0;padding:0"
+           {{ 'checked' if sv and sv.is_member|string == val }}>
+    {{ label }}
+  </label>
+  {% endfor %}
+</fieldset>
+
+{# ── Q4 楽しみ ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">特に何を楽しみにされていますか？</label>
+  <textarea name="looking_forward" rows="3"
+            placeholder="ワイン・料理・雰囲気など">{{ sv.looking_forward if sv else '' }}</textarea>
+</div>
+
+{# ── Q5 アレルギー ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">アレルギーはございますか？</label>
+  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
+    ◆ メニュー決定後の変更はできませんのでご了承ください。
+  </p>
+  <textarea name="allergy" rows="2"
+            placeholder="ない場合は「なし」とご記入ください">{{ sv.allergy if sv else '' }}</textarea>
+</div>
+
+{# ── Q6 苦手食材 ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">苦手な食材はございますか？</label>
+  <p style="font-size:0.8rem;color:#888;margin:4px 0 4px">
+    ※ 100% 使用しないということではありませんが、可能な限り対応させていただきます。
+  </p>
+  <textarea name="disliked_food" rows="2"
+            placeholder="ない場合は「なし」とご記入ください">{{ sv.disliked_food if sv else '' }}</textarea>
+</div>
+
+{# ── Q7 ノンアルカクテル ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">ノンアルカクテル希望人数</label>
+  <p style="font-size:0.8rem;color:#555;margin:4px 0 4px">
+    アルコールが飲めない方には【オリジナルノンアルカクテル】を数種類ご用意します。<br>
+    希望される場合は人数をご記入ください。<br>
+    <span style="color:#c62828">◆ 事前の仕込みが必要ですので、急な対応はできかねます。</span>
+  </p>
+  <input type="number" name="nonalcoholic_count" min="0" value="{{ sv.nonalcoholic_count if sv else 0 }}"
+         style="width:100px">
+  <span style="font-size:0.88rem;color:#666;margin-left:6px">名（0 = 希望なし）</span>
+</div>
+
+{# ── Q8 情報配信 ── #}
+<fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
+  <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
+    今後、イベントやお得な情報をご希望されますか？<span style="color:red">*</span>
+  </legend>
+  {% for val, label in [
+      ('none',  '希望しない'),
+      ('email', 'メールを希望する'),
+      ('line',  '「てるじいイベント案内LINE公式グループ」に参加希望'),
+      ('other', 'その他'),
+  ] %}
+  <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
+    <input type="radio" name="info_preference" value="{{ val }}" required
+           style="width:auto;margin-top:3px;flex-shrink:0;padding:0"
+           {{ 'checked' if sv and sv.info_preference == val }}
+           onchange="document.getElementById('info_other_wrap').style.display = (this.value==='other'?'block':'none')">
+    <span>
+      {{ label }}
+      {% if val == 'line' %}
+      <a href="https://lin.ee/uiArYyV" target="_blank"
+         style="font-size:0.78rem;color:#1a73e8;margin-left:4px">https://lin.ee/uiArYyV</a>
+      {% endif %}
+    </span>
+  </label>
+  {% endfor %}
+  <div id="info_other_wrap" style="display:{{ 'block' if sv and sv.info_preference == 'other' else 'none' }};margin-top:8px">
+    <textarea name="info_other" rows="2" placeholder="詳しく教えてください"
+              style="margin-top:0">{{ sv.info_other if sv else '' }}</textarea>
+  </div>
+</fieldset>
+
+{# ── Q9 その他 ── #}
+<div style="margin-bottom:24px">
+  <label style="margin-top:0">その他ご質問があればお気軽にどうぞ</label>
+  <textarea name="other_questions" rows="3"
+            placeholder="何でもどうぞ">{{ sv.other_questions if sv else '' }}</textarea>
+</div>
+
+{# ── 規約同意 ── #}
+<div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
+  <p style="font-size:0.88rem;font-weight:600;margin-bottom:12px">以下の注意事項をご確認のうえ、チェックをお願いします。</p>
+
+  <div style="font-size:0.82rem;color:#555;line-height:1.8;margin-bottom:14px">
+    <strong>【キャンセルポリシー】</strong><br>
+    キャンセルや人数の変更は【7日前まで】とさせていただきます。それ以降は以下のキャンセル料を頂戴します。<br>
+    6〜3日前まで 50% ／ 2〜1日前まで 80% ／ 当日 100%<br><br>
+    ・振込後のキャンセル返金は振込手数料を引いた金額での振込となります。<br>
+    ・香りを楽しむため、強い香水や整髪料等はご遠慮ください。<br>
+    ・泥酔やリバースは出禁になることもございます。<br>
+    ・飲み残しは別途 3,000円 頂戴いたします。<br>
+    ・一斉スタートですので、時間厳守でお願い致します。<br>
+    ・遅れてご参加の場合、全ての料理をお出しできない場合もございます。<br>
+    ・複数名でご参加の方は、上記注意事項を参加者全員と共有お願い致します。
+  </div>
+
+  <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;cursor:pointer">
+    <input type="checkbox" name="terms_agreed" value="1" required
+           style="width:auto;margin-top:3px;flex-shrink:0;padding:0"
+           {{ 'checked' if sv and sv.terms_agreed }}>
+    <span style="font-size:0.88rem">
+      上記の注意事項・キャンセルポリシーすべてに同意します（了解しました）
+    </span>
+  </label>
+</div>
+
+<button class="btn btn-primary" type="submit" style="width:100%;font-size:1rem">
+  アンケートを送信して予約を確定する
+</button>
+
+</form>
+</div>
+{% endif %}
+{% endblock %}

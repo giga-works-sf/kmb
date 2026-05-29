@@ -162,61 +162,6 @@ def build_admin_day_list(year: int, month: int) -> list[dict]:
     return days
 
 
-def build_admin_calendar(year: int, month: int) -> list[list[Optional[dict]]]:
-    all_defaults = models.get_all_defaults()
-    day_cfgs     = models.get_all_day_configs()
-
-    month_dates = [
-        date(year, month, d).isoformat()
-        for d in range(1, cal_mod.monthrange(year, month)[1] + 1)
-    ]
-    inventory = models.get_inventory_bulk(month_dates)
-
-    weeks = []
-    for week in cal_mod.monthcalendar(year, month):
-        row = []
-        for day_num in week:
-            if day_num == 0:
-                row.append(None)
-                continue
-            d = date(year, month, day_num)
-            cfg = models.get_effective_config(d.isoformat(), all_defaults, day_cfgs)
-            row.append(_admin_cell(d, cfg, inventory))
-        weeks.append(row)
-    return weeks
-
-
-def _admin_cell(d: date, cfg: dict, inventory: dict) -> dict:
-    cell: dict = {
-        "date": d.isoformat(), "day": d.day,
-        "is_closed": cfg["is_closed"],
-        "is_manual_override": cfg["is_manual_override"],
-        "is_past": d < date.today(),
-        "rotations": [], "color": "neutral",
-    }
-
-    if cfg["is_closed"]:
-        return cell
-
-    total_booked = total_confirmed = 0
-    for rot in (1, 2):
-        t = cfg["start_time_1"] if rot == 1 else cfg["start_time_2"]
-        c = cfg["capacity_1"]   if rot == 1 else cfg["capacity_2"]
-        if t is None:
-            continue
-        inv = inventory.get((d.isoformat(), rot),
-                            {"booked": 0, "confirmed_count": 0, "pending_count": 0})
-        b, conf, pend = inv["booked"], inv["confirmed_count"], inv["pending_count"]
-        total_booked += b
-        total_confirmed += conf
-        cell["rotations"].append(
-            {"rotation": rot, "time": t, "capacity": c,
-             "booked": b, "confirmed": conf, "pending": pend}
-        )
-
-    if total_booked > 0:
-        cell["color"] = "green" if total_confirmed == total_booked else "red"
-    return cell
 
 
 def apply_default_propagation(old_all_defaults: dict) -> list[str]:

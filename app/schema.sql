@@ -39,10 +39,38 @@ CREATE TABLE IF NOT EXISTS reservation (
     confirmed   INTEGER NOT NULL DEFAULT 0,
     status      TEXT NOT NULL DEFAULT 'pending_verify'
                 CHECK (status IN ('active', 'cancelled', 'pending_verify')),
-    email_token       TEXT,
-    token_expires_at  TEXT,
+    verification_token TEXT,
+    token_expires_at   TEXT,
     created_at  TEXT NOT NULL,
     updated_at  TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_res_date_status ON reservation(date, status);
+
+-- 来店前アンケート
+CREATE TABLE IF NOT EXISTS survey_response (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    reservation_id      INTEGER NOT NULL UNIQUE,
+    source              TEXT,           -- 来店経緯: terujii/ourdays/yukawa/other
+    source_other        TEXT,
+    visit_count         TEXT,           -- 来店回数: first/2nd/3rd_plus
+    is_member           INTEGER,        -- 会員: 1/0
+    looking_forward     TEXT,           -- 楽しみにしていること
+    allergy             TEXT,           -- アレルギー
+    disliked_food       TEXT,           -- 苦手な食材
+    nonalcoholic_count  INTEGER NOT NULL DEFAULT 0,  -- ノンアル希望人数
+    info_preference     TEXT,           -- 情報配信: none/email/line/other
+    info_other          TEXT,
+    other_questions     TEXT,           -- その他質問
+    terms_agreed        INTEGER NOT NULL DEFAULT 0,  -- 規約同意
+    created_at          TEXT NOT NULL,
+    updated_at          TEXT NOT NULL
+);
+
+-- IP別リクエスト回数（日次レート制限）
+CREATE TABLE IF NOT EXISTS rate_limit (
+    ip    TEXT NOT NULL,
+    date  TEXT NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (ip, date)
+);

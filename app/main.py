@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
+from app import log as _log
+_log.setup()
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 

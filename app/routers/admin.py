@@ -1,9 +1,12 @@
 """Admin router: calendar, day edit, reservation ops, settings."""
 from __future__ import annotations
 import calendar as cal_mod
+import logging
 from datetime import date
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -22,6 +25,16 @@ _WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
 
 def _tpl(name: str, request: Request, **ctx):
     return templates.TemplateResponse(request, name, {**_COMMON, **ctx})
+
+
+# ── Maintenance ───────────────────────────────────────────────────────────────
+
+@router.post("/maintenance/cleanup-pending", response_class=HTMLResponse)
+async def maintenance_cleanup(request: Request):
+    """Delete expired pending_verify reservations. For cron use."""
+    deleted = models.cleanup_expired_pending()
+    logger.info("Cleanup: deleted %d expired pending_verify reservations", deleted)
+    return JSONResponse({"deleted": deleted})
 
 
 # ── Calendar ──────────────────────────────────────────────────────────────────
@@ -56,12 +69,14 @@ async def day_edit(request: Request, target_date: str, msg: Optional[str] = None
     dc  = models.get_day_config(target_date)
     cfg = models.get_effective_config(target_date, all_defaults)
     reservations = models.list_reservations_for_date(target_date)
+    surveys  = models.get_surveys_for_date(target_date)
     weekday_name = _WEEKDAY_NAMES[date.fromisoformat(target_date).weekday()]
     is_past = date.fromisoformat(target_date) < date.today()
     return _tpl("admin/day_edit.html", request,
                 target_date=target_date, weekday_name=weekday_name,
                 dc=dc, cfg=cfg, is_past=is_past,
-                reservations=reservations, slots=_SLOTS, msg=msg, error=None)
+                reservations=reservations, surveys=surveys,
+                slots=_SLOTS, msg=msg, error=None)
 
 
 @router.post("/day/{target_date}", response_class=HTMLResponse)

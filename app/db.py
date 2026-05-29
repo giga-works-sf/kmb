@@ -42,6 +42,7 @@ def init_db() -> None:
             "ALTER TABLE day_config ADD COLUMN course TEXT",
             "ALTER TABLE reservation ADD COLUMN email_token TEXT",
             "ALTER TABLE reservation ADD COLUMN token_expires_at TEXT",
+            "ALTER TABLE reservation RENAME COLUMN email_token TO verification_token",
         ]:
             try:
                 conn.execute(sql)
@@ -77,14 +78,14 @@ def init_db() -> None:
                     confirmed   INTEGER NOT NULL DEFAULT 0,
                     status      TEXT NOT NULL DEFAULT 'pending_verify'
                                 CHECK (status IN ('active', 'cancelled', 'pending_verify')),
-                    email_token       TEXT,
+                    verification_token TEXT,
                     token_expires_at  TEXT,
                     created_at  TEXT NOT NULL,
                     updated_at  TEXT NOT NULL
                 );
                 INSERT INTO reservation
                     SELECT id, date, rotation, name, num_people, phone, email, note,
-                           confirmed, status, email_token, token_expires_at,
+                           confirmed, status, verification_token, token_expires_at,
                            created_at, updated_at
                     FROM _reservation_old;
                 DROP TABLE _reservation_old;

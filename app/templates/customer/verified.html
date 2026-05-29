@@ -32,8 +32,15 @@
   {% endif %}
 </div>
 
-{# アンケートフォームはここに設置予定 #}
+{% if can_edit_survey %}
+<p style="margin-top:20px">
+  <a href="/kmb/survey/{{ rid }}"
+     style="font-size:0.85rem;color:#1a73e8;text-decoration:underline">
+    📝 アンケートを修正する
+  </a>
+</p>
+{% endif %}
 
-<p style="margin-top:20px;font-size:0.85rem;color:#666">変更・キャンセルはお電話にてご連絡ください。</p>
+<p style="margin-top:16px;font-size:0.85rem;color:#666">変更・キャンセルはお電話にてご連絡ください。</p>
 <p style="margin-top:12px"><a href="/kmb/">← トップに戻る</a></p>
 {% endblock %}

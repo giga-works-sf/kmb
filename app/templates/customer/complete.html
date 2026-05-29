@@ -2,7 +2,11 @@
 {% block title %}ご予約完了{% endblock %}
 {% block content %}
 <h2>📧 ご予約リクエストを受け付けました</h2>
+{% if resent %}
+<div class="msg-ok">確認メールを再送しました。</div>
+{% else %}
 <div class="msg-ok">確認メールを {{ res.email }} に送信しました。</div>
+{% endif %}
 
 <div style="margin-top:16px;padding:18px 20px;background:#fff8e1;
             border:2px solid #f9a825;border-radius:8px;text-align:center">
@@ -10,12 +14,19 @@
     📩 送信されたメールのURLをクリックすることで<br>予約が確定いたします
   </p>
   <p style="font-size:0.9rem;color:#c62828;font-weight:600;margin-top:8px">
-    ⏰ 有効期限：2時間
+    ⏰ 有効期限：10分
   </p>
 </div>
 <p style="font-size:0.82rem;color:#666;margin-top:10px">
   メールが届いていない場合は迷惑メールフォルダをご確認ください。
 </p>
+<form method="post" action="/kmb/resend-email/{{ res.id }}" style="margin-top:10px">
+  <button type="submit"
+          style="background:none;border:none;color:#1a73e8;cursor:pointer;
+                 font-size:0.88rem;padding:0;text-decoration:underline">
+    メールを再送する
+  </button>
+</form>
 
 <div class="form-wrap" style="margin-top:16px">
   <h3 style="font-size:1rem;margin-bottom:12px">ご予約内容</h3>

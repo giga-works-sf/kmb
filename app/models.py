@@ -231,13 +231,13 @@ def create_reservation(
         return rid
 
 
-def store_email_token(rid: int) -> str:
-    """Generate and store email verification token (2h expiry). Returns token."""
+def store_verification_token(rid: int) -> str:
+    """Generate and store email verification token (10min expiry). Returns token."""
     token = secrets.token_urlsafe(32)
-    expires = (datetime.now(timezone.utc) + timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+    expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
     with get_conn() as conn:
         conn.execute(
-            "UPDATE reservation SET email_token=?, token_expires_at=?, updated_at=? WHERE id=?",
+            "UPDATE reservation SET verification_token=?, token_expires_at=?, updated_at=? WHERE id=?",
             (token, expires, now(), rid),
         )
         conn.commit()
@@ -251,7 +251,7 @@ def store_sms_otp(rid: int, phone_e164: str, dev_code: Optional[str]) -> None:
     expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
     with get_conn() as conn:
         conn.execute(
-            "UPDATE reservation SET phone=?, email_token=?, token_expires_at=?, updated_at=? "
+            "UPDATE reservation SET phone=?, verification_token=?, token_expires_at=?, updated_at=? "
             "WHERE id=?",
             (phone_e164, dev_code, expires, now(), rid),
         )
@@ -275,7 +275,7 @@ def activate_reservation(rid: int) -> Optional[dict]:
             if datetime.now(timezone.utc) > expires:
                 return None
         conn.execute(
-            "UPDATE reservation SET status='active', email_token=NULL, "
+            "UPDATE reservation SET status='active', verification_token=NULL, "
             "token_expires_at=NULL, updated_at=? WHERE id=?",
             (now(), rid),
         )
@@ -288,7 +288,7 @@ def activate_by_token(token: str) -> Optional[dict]:
     """Verify email token and activate reservation. Returns reservation dict or None."""
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT * FROM reservation WHERE email_token=? AND status='pending_verify'",
+            "SELECT * FROM reservation WHERE verification_token=? AND status='pending_verify'",
             (token,),
         ).fetchone()
         if not row:
@@ -300,7 +300,7 @@ def activate_by_token(token: str) -> Optional[dict]:
         if datetime.now(timezone.utc) > expires:
             return None  # 期限切れ — レコードはそのまま残す
         conn.execute(
-            "UPDATE reservation SET status='active', email_token=NULL, "
+            "UPDATE reservation SET status='active', verification_token=NULL, "
             "token_expires_at=NULL, updated_at=? WHERE id=?",
             (now(), res["id"]),
         )
@@ -389,7 +389,7 @@ def admin_activate_reservation(rid: int) -> None:
     """Admin manually activates a pending_verify reservation (no token needed)."""
     with get_conn() as conn:
         conn.execute(
-            "UPDATE reservation SET status='active', email_token=NULL, "
+            "UPDATE reservation SET status='active', verification_token=NULL, "
             "token_expires_at=NULL, updated_at=? "
             "WHERE id=? AND status='pending_verify'",
             (now(), rid),
@@ -404,6 +404,113 @@ def set_confirmed(rid: int, confirmed: int) -> None:
             (confirmed, now(), rid),
         )
         conn.commit()
+
+
+# ── Survey ────────────────────────────────────────────────────────────────────
+
+def save_survey(rid: int, data: dict) -> None:
+    """Upsert survey response for a reservation."""
+    ts = now()
+    with get_conn() as conn:
+        conn.execute("""
+            INSERT INTO survey_response
+                (reservation_id, source, source_other, visit_count, is_member,
+                 looking_forward, allergy, disliked_food, nonalcoholic_count,
+                 info_preference, info_other, other_questions, terms_agreed,
+                 created_at, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(reservation_id) DO UPDATE SET
+                source=excluded.source,
+                source_other=excluded.source_other,
+                visit_count=excluded.visit_count,
+                is_member=excluded.is_member,
+                looking_forward=excluded.looking_forward,
+                allergy=excluded.allergy,
+                disliked_food=excluded.disliked_food,
+                nonalcoholic_count=excluded.nonalcoholic_count,
+                info_preference=excluded.info_preference,
+                info_other=excluded.info_other,
+                other_questions=excluded.other_questions,
+                terms_agreed=excluded.terms_agreed,
+                updated_at=excluded.updated_at
+        """, (
+            rid,
+            data.get("source"), data.get("source_other"),
+            data.get("visit_count"),
+            int(data.get("is_member") or 0),
+            data.get("looking_forward") or None,
+            data.get("allergy") or None,
+            data.get("disliked_food") or None,
+            int(data.get("nonalcoholic_count") or 0),
+            data.get("info_preference"), data.get("info_other"),
+            data.get("other_questions") or None,
+            int(data.get("terms_agreed") or 0),
+            ts, ts,
+        ))
+        conn.commit()
+
+
+def get_survey(rid: int) -> Optional[dict]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM survey_response WHERE reservation_id=?", (rid,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_surveys_for_date(date_str: str) -> dict[int, dict]:
+    """Returns {reservation_id: survey_dict} for all surveys on a given date."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT sr.* FROM survey_response sr
+               JOIN reservation r ON sr.reservation_id = r.id
+               WHERE r.date = ?""",
+            (date_str,),
+        ).fetchall()
+    return {r["reservation_id"]: dict(r) for r in rows}
+
+
+RATE_LIMIT_EXCLUDE = {"27.84.160.69"}
+RATE_LIMIT_PER_DAY = 5
+
+
+def check_rate_limit(ip: str) -> bool:
+    """Return True if within daily limit, False if exceeded. Increments counter.
+    IPs in RATE_LIMIT_EXCLUDE are always allowed."""
+    if ip in RATE_LIMIT_EXCLUDE:
+        return True
+    today = _date_cls.today().isoformat()
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT count FROM rate_limit WHERE ip=? AND date=?", (ip, today)
+        ).fetchone()
+        if row:
+            if row["count"] >= RATE_LIMIT_PER_DAY:
+                return False
+            conn.execute(
+                "UPDATE rate_limit SET count=count+1 WHERE ip=? AND date=?",
+                (ip, today),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO rate_limit (ip, date, count) VALUES (?,?,1)", (ip, today)
+            )
+        conn.commit()
+    return True
+
+
+def cleanup_expired_pending() -> int:
+    """Delete pending_verify reservations past their verification deadline.
+    Safe to call from cron. Returns number of rows deleted."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "DELETE FROM reservation "
+            "WHERE status='pending_verify' "
+            "AND (token_expires_at IS NULL OR token_expires_at < ?)",
+            (now(),),
+        )
+        conn.commit()
+        return cur.rowcount
 
 
 def cancel_reservation(rid: int) -> None:
@@ -421,7 +528,7 @@ def move_reservation(rid: int, new_date: str, new_rotation: int) -> tuple[bool, 
         res = conn.execute(
             "SELECT * FROM reservation WHERE id=?", (rid,)
         ).fetchone()
-        if not res or res["status"] != "active":
+        if not res or res["status"] not in ("active", "pending_verify"):
             conn.execute("ROLLBACK")
             return False, "予約が見つかりません"
 

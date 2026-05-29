@@ -1,13 +1,15 @@
 """Send confirmation email to customer. Falls back to outbox/ in dev mode."""
 from __future__ import annotations
+import logging
 import smtplib
 from datetime import date as _date_cls, datetime
 from email.message import EmailMessage
 
 from app.config import (MAIL_RELAY_HOST, MAIL_RELAY_PORT,
-                         MAIL_FROM, SHOP_NAME, OUTBOX_DIR)
+                         MAIL_FROM, SHOP_NAME, OUTBOX_DIR, ADMIN_EMAIL)
 
 _WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
+logger = logging.getLogger(__name__)
 
 
 def send_verification(reservation: dict, effective_cfg: dict, token: str) -> None:
@@ -25,7 +27,7 @@ def send_verification(reservation: dict, effective_cfg: dict, token: str) -> Non
 
     body = (
         f"【予約リクエスト確認】{SHOP_NAME}\n\n"
-        f"以下のURLをクリックすることで予約が確定いたします（有効期限2時間）\n\n"
+        f"以下のURLをクリックすることで予約が確定いたします（有効期限10分）\n\n"
         f"{verify_url}\n\n"
         f"──── ご予約内容 ────\n"
         f"日付　　: {date_str}\n"
@@ -46,19 +48,55 @@ def send_verification(reservation: dict, effective_cfg: dict, token: str) -> Non
     msg["To"]      = reservation["email"]
     msg.set_content(body)
 
-    if not MAIL_RELAY_HOST:
-        _save_to_outbox(msg, reservation["id"])
+    _dispatch(msg, reservation["id"])
+
+
+def send_admin_notification(reservation: dict, effective_cfg: dict) -> None:
+    """Notify admin of a new booking request. No-op if ADMIN_EMAIL is unset."""
+    if not ADMIN_EMAIL:
+        logger.warning("ADMIN_EMAIL not set — skipping admin notification")
         return
 
+    rotation = reservation["rotation"]
+    start_time = (effective_cfg["start_time_1"] if rotation == 1
+                  else effective_cfg["start_time_2"])
+    weekday = _WEEKDAY_NAMES[_date_cls.fromisoformat(reservation["date"]).weekday()]
+    date_str = f"{reservation['date']}（{weekday}）"
+
+    body = (
+        f"【新規予約リクエスト】{SHOP_NAME}\n\n"
+        f"日付　　: {date_str}\n"
+        f"開始時間: {start_time}\n"
+        f"人数　　: {reservation['num_people']}名\n"
+        f"代表者名: {reservation['name']} 様\n"
+        f"電話番号: {reservation['phone']}\n"
+        f"メール　: {reservation.get('email','')}\n"
+    )
+    if reservation.get("note"):
+        body += f"備考　　: {reservation['note']}\n"
+    body += f"\n管理画面: {reservation['date']} の予約状況を確認してください。\n"
+
+    msg = EmailMessage()
+    msg["Subject"] = f"【新規予約リクエスト】{date_str} {start_time}〜 {SHOP_NAME}"
+    msg["From"]    = MAIL_FROM or "noreply@example.com"
+    msg["To"]      = ADMIN_EMAIL
+    msg.set_content(body)
+    _dispatch(msg, reservation["id"])
+
+
+def _dispatch(msg: EmailMessage, rid: int) -> None:
+    """Send or save to outbox."""
+    if not MAIL_RELAY_HOST:
+        _save_to_outbox(msg, rid)
+        return
     try:
-        # GWS SMTP relay — IP アドレスで認証済みのため login() 不要
         with smtplib.SMTP(MAIL_RELAY_HOST, MAIL_RELAY_PORT) as s:
             s.starttls()
             s.send_message(msg)
+        logger.info("Mail sent to %s (rid=%s)", msg["To"], rid)
     except Exception as exc:
-        import sys
-        print(f"[mailer] SMTP error: {exc}", file=sys.stderr)
-        _save_to_outbox(msg, reservation["id"])
+        logger.error("SMTP error (rid=%s): %s", rid, exc)
+        _save_to_outbox(msg, rid)
 
 
 def _save_to_outbox(msg: EmailMessage, rid: int) -> None:
@@ -66,4 +104,4 @@ def _save_to_outbox(msg: EmailMessage, rid: int) -> None:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     path = OUTBOX_DIR / f"{ts}_{rid}.eml"
     path.write_bytes(bytes(msg))
-    print(f"[mailer] saved to {path}")
+    logger.info("Mail saved to outbox: %s", path)
