@@ -20,12 +20,12 @@
       class="move-form" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
   <input type="hidden" name="back_date" value="{{ target_date }}"
          style="width:auto;padding:0;border:none;margin:0">
-  <input type="date" name="new_date" value="{{ target_date }}"
+  <input type="date" name="new_date" value="{{ target_date }}" lang="ja"
          class="move-date" style="width:150px;padding:5px;margin:0">
   <span class="move-dow" style="font-size:0.82rem;color:#555;min-width:24px"></span>
   <select name="new_rotation" class="rot-select" style="width:auto;padding:5px;margin:0">
-    <option value="1" class="rot-opt-1">1回目</option>
-    <option value="2" class="rot-opt-2">2回目</option>
+    <option value="1" class="rot-opt-1" {{ 'selected' if res.rotation == 1 }}>1回目</option>
+    <option value="2" class="rot-opt-2" {{ 'selected' if res.rotation == 2 }}>2回目</option>
   </select>
   <button class="btn btn-sm" type="submit">日付変更</button>
 </form>
@@ -51,10 +51,18 @@
 {% else %}
 {% for res in rot_active %}
 <div class="res-card">
-  <strong>{{ res.name }} 様 / {{ res.num_people }}名</strong>
-  <div class="res-meta">
-    📞 {{ res.phone }} / ✉ {{ res.email }}
-    {% if res.note %} / 備考: {{ res.note }}{% endif %}
+  <div style="font-size:0.95rem;font-weight:600">
+    {{ res.name }} 様 / {{ res.num_people }}名
+    <span style="display:inline-block;padding:1px 8px;border-radius:3px;font-size:0.78rem;
+                 font-weight:normal;margin-left:6px;
+                 {{ 'background:#e6f4ea;color:#2e7d32' if res.confirmed else 'background:#fff3e0;color:#e65100' }}">
+      {{ '確定' if res.confirmed else '未確定' }}
+    </span>
+  </div>
+  <div style="font-size:0.82rem;color:#666;margin-top:6px;line-height:1.9">
+    📞 {{ res.phone }}<br>
+    ✉ {{ res.email }}
+    {% if res.note %}<br>備考: {{ res.note }}{% endif %}
   </div>
   <div class="actions" style="flex-wrap:wrap;align-items:center;gap:6px">
     <form method="post" action="/kmb/admin/reservation/{{ res.id }}/confirm">
@@ -79,10 +87,13 @@
 </h3>
 {% for res in rot_pending %}
 <div class="res-card" style="border-color:#f9a825">
-  <strong>{{ res.name }} 様 / {{ res.num_people }}名</strong>
-  <div class="res-meta">
-    📞 {{ res.phone }} / ✉ {{ res.email }}
-    {% if res.note %} / 備考: {{ res.note }}{% endif %}
+  <div style="font-size:0.95rem;font-weight:600">
+    {{ res.name }} 様 / {{ res.num_people }}名
+  </div>
+  <div style="font-size:0.82rem;color:#666;margin-top:6px;line-height:1.9">
+    📞 {{ res.phone }}<br>
+    ✉ {{ res.email }}
+    {% if res.note %}<br>備考: {{ res.note }}{% endif %}
   </div>
   {% if res.email_token %}
   <div style="margin-top:4px">
@@ -198,6 +209,11 @@ document.querySelectorAll('.move-date').forEach(function(dateInput) {
 
   updateConfig(dateInput.value);
   dateInput.addEventListener('change', function(){ updateConfig(this.value); });
+});
+
+// Safari の bfcache 対策: 戻るボタンで戻った時に強制リロード
+window.addEventListener('pageshow', function(e) {
+  if (e.persisted) window.location.reload();
 });
 </script>
 {% endblock %}
