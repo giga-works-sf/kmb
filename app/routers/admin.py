@@ -74,10 +74,20 @@ async def day_edit(request: Request, target_date: str, msg: Optional[str] = None
     surveys  = models.get_surveys_for_date(target_date)
     weekday_name = _WEEKDAY_NAMES[date.fromisoformat(target_date).weekday()]
     is_past = date.fromisoformat(target_date) < date.today()
+    # 回転ごとの残席数（手動入力フォームの上限に使用）
+    inventory = models.get_inventory_bulk([target_date])
+    remaining = {}
+    for rot in (1, 2):
+        t = cfg["start_time_1"] if rot == 1 else cfg["start_time_2"]
+        c = cfg["capacity_1"]   if rot == 1 else cfg["capacity_2"]
+        if t and c:
+            booked = inventory.get((target_date, rot), {"booked": 0})["booked"]
+            remaining[rot] = max(0, c - booked)
     return _tpl("admin/day_edit.html", request,
                 target_date=target_date, weekday_name=weekday_name,
                 dc=dc, cfg=cfg, is_past=is_past,
                 reservations=reservations, surveys=surveys,
+                remaining=remaining,
                 slots=_SLOTS, msg=msg, error=None)
 
 

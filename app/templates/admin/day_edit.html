@@ -92,8 +92,8 @@
       <input type="hidden" name="confirmed" value="{{ 0 if res.confirmed else 1 }}"
              style="width:auto;padding:0;border:none;margin:0">
       <button class="btn btn-sm" type="submit"
-              {% if res.confirmed %}style="background:#43a047;color:#fff;border:none"{% endif %}>
-        {% if res.confirmed %}未確定に戻す{% else %}確定{% endif %}
+              style="{{ 'background:#fff;color:#555;border:1px solid #ccc' if res.confirmed else 'background:#43a047;color:#fff;border:none' }}">
+        {% if res.confirmed %}未確定に戻す{% else %}確定する{% endif %}
       </button>
     </form>
     {{ action_forms(res) }}
@@ -156,18 +156,25 @@
       </div>
       <div>
         <label style="margin-top:0">人数 <span style="color:red">*</span></label>
-        <input type="number" name="num_people" min="1" value="1" required
+        <input type="number" name="num_people" id="manual-num-people"
+               min="1" value="1" required
                style="width:70px;margin-top:4px">
       </div>
     </div>
 
     <label>開始時間 <span style="color:red">*</span></label>
-    <select name="rotation" style="margin-top:4px">
+    <select name="rotation" id="manual-rotation" style="margin-top:4px">
       {% if cfg.start_time_1 %}
-      <option value="1">1回目 {{ cfg.start_time_1 }}-</option>
+      {% set rem1 = remaining.get(1, 0) %}
+      <option value="1" data-max="{{ rem1 }}">
+        1回目 {{ cfg.start_time_1 }}-（残{{ rem1 }}席）
+      </option>
       {% endif %}
       {% if cfg.start_time_2 %}
-      <option value="2">2回目 {{ cfg.start_time_2 }}-</option>
+      {% set rem2 = remaining.get(2, 0) %}
+      <option value="2" data-max="{{ rem2 }}">
+        2回目 {{ cfg.start_time_2 }}-（残{{ rem2 }}席）
+      </option>
       {% endif %}
     </select>
 
@@ -283,6 +290,23 @@ document.querySelectorAll('.move-date').forEach(function(dateInput) {
   updateConfig(dateInput.value);
   dateInput.addEventListener('change', function(){ updateConfig(this.value); });
 });
+
+// 手動入力フォーム: 回転変更時に人数の上限を更新
+(function() {
+  var rotSel  = document.getElementById('manual-rotation');
+  var numInput = document.getElementById('manual-num-people');
+  if (!rotSel || !numInput) return;
+
+  function updateMax() {
+    var opt = rotSel.options[rotSel.selectedIndex];
+    var max = parseInt(opt ? opt.getAttribute('data-max') || '0' : '0');
+    numInput.max = max > 0 ? max : '';
+    if (max > 0 && parseInt(numInput.value) > max) numInput.value = max;
+  }
+
+  rotSel.addEventListener('change', updateMax);
+  updateMax();
+})();
 
 // Safari の bfcache 対策: 戻るボタンで戻った時に強制リロード
 window.addEventListener('pageshow', function(e) {

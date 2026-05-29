@@ -1,5 +1,14 @@
 {% extends "base.html" %}
 {% block title %}予約フォーム{% endblock %}
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<style>
+  .ts-wrapper.single .ts-control { border:1px solid #ccc; border-radius:4px; padding:7px 10px; font-size:0.9rem; }
+  .ts-wrapper.single.input-active .ts-control { border-color:#1a73e8; }
+  .ts-dropdown { font-size:0.9rem; }
+</style>
+{% endblock %}
 {% block content %}
 <h2>ご予約フォーム</h2>
 {% if error %}
@@ -40,19 +49,57 @@
     <input type="text" name="name" required placeholder="山田 太郎">
 
     <label>電話番号 <span style="color:red">*</span><span style="font-size:0.78rem;color:#888;font-weight:normal;margin-left:6px">SMS認証コードを送信します</span></label>
-    <select name="phone_country">
-      <option value="+81" selected>🇯🇵 +81（日本）</option>
-      <option value="+1">🇺🇸 +1（米国/カナダ）</option>
-      <option value="+44">🇬🇧 +44（英国）</option>
-      <option value="+86">🇨🇳 +86（中国）</option>
-      <option value="+82">🇰🇷 +82（韓国）</option>
-      <option value="+886">🇹🇼 +886（台湾）</option>
-      <option value="+852">🇭🇰 +852（香港）</option>
-      <option value="+33">🇫🇷 +33（フランス）</option>
-      <option value="+49">🇩🇪 +49（ドイツ）</option>
-      <option value="+61">🇦🇺 +61（オーストラリア）</option>
+    <select id="phone-country" name="phone_country">
+      <option value="+81"  selected>🇯🇵 +81  日本 Japan JPN</option>
+      <option value="+1"  >🇺🇸 +1   米国 United States USA</option>
+      <option value="+1"  >🇨🇦 +1   カナダ Canada CAN</option>
+      <option value="+44" >🇬🇧 +44  英国 United Kingdom GBR</option>
+      <option value="+61" >🇦🇺 +61  オーストラリア Australia AUS</option>
+      <option value="+64" >🇳🇿 +64  ニュージーランド New Zealand NZL</option>
+      <option value="+33" >🇫🇷 +33  フランス France FRA</option>
+      <option value="+49" >🇩🇪 +49  ドイツ Germany DEU</option>
+      <option value="+39" >🇮🇹 +39  イタリア Italy ITA</option>
+      <option value="+34" >🇪🇸 +34  スペイン Spain ESP</option>
+      <option value="+31" >🇳🇱 +31  オランダ Netherlands NLD</option>
+      <option value="+32" >🇧🇪 +32  ベルギー Belgium BEL</option>
+      <option value="+41" >🇨🇭 +41  スイス Switzerland CHE</option>
+      <option value="+46" >🇸🇪 +46  スウェーデン Sweden SWE</option>
+      <option value="+47" >🇳🇴 +47  ノルウェー Norway NOR</option>
+      <option value="+45" >🇩🇰 +45  デンマーク Denmark DNK</option>
+      <option value="+358">🇫🇮 +358 フィンランド Finland FIN</option>
+      <option value="+86" >🇨🇳 +86  中国 China CHN</option>
+      <option value="+82" >🇰🇷 +82  韓国 South Korea KOR</option>
+      <option value="+886">🇹🇼 +886 台湾 Taiwan TWN</option>
+      <option value="+852">🇭🇰 +852 香港 Hong Kong HKG</option>
+      <option value="+65" >🇸🇬 +65  シンガポール Singapore SGP</option>
+      <option value="+66" >🇹🇭 +66  タイ Thailand THA</option>
+      <option value="+84" >🇻🇳 +84  ベトナム Vietnam VNM</option>
+      <option value="+62" >🇮🇩 +62  インドネシア Indonesia IDN</option>
+      <option value="+60" >🇲🇾 +60  マレーシア Malaysia MYS</option>
+      <option value="+63" >🇵🇭 +63  フィリピン Philippines PHL</option>
+      <option value="+91" >🇮🇳 +91  インド India IND</option>
+      <option value="+55" >🇧🇷 +55  ブラジル Brazil BRA</option>
+      <option value="+52" >🇲🇽 +52  メキシコ Mexico MEX</option>
     </select>
     <input type="tel" name="phone" required placeholder="090-0000-0000">
+
+<script>
+new TomSelect('#phone-country', {
+  maxOptions: null,
+  placeholder: '国を選択または入力…',
+  create: false,
+  render: {
+    option: function(data) {
+      return '<div>' + data.text + '</div>';
+    },
+    item: function(data) {
+      // 表示は フラグ + コード のみ（日英名は検索用）
+      var parts = data.text.split(' ');
+      return '<div>' + (parts[0]||'') + ' ' + (parts[1]||'') + '</div>';
+    }
+  }
+});
+</script>
 
     <label>メールアドレス <span style="color:red">*</span></label>
     <input type="email" name="email" required placeholder="example@email.com">
