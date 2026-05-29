@@ -9,14 +9,28 @@
 {% if not can_edit %}
 <div class="msg-err">過去の日付のアンケートは変更できません。</div>
 {% else %}
+{% if error is defined and error %}
+<div class="msg-err" style="margin-bottom:16px">{{ error }}</div>
+{% endif %}
 
 <p style="font-size:0.85rem;color:#888;margin-bottom:20px">
   ご予約内容の確認とともに、以下のアンケートへのご回答をお願いいたします。<br>
   すべての項目にお答えください。
 </p>
 
+<script>
+function setTransferWrap(show) {
+  var wrap  = document.getElementById('transfer_wrap');
+  var input = document.getElementById('transfer_name_input');
+  wrap.style.display = show ? 'block' : 'none';
+  input.required = show;
+  if (!show) input.value = '';
+}
+</script>
+
 <div class="form-wrap" style="max-width:600px">
-<form method="post" action="/kmb/survey/{{ res.id }}">
+<form method="post" action="/kmb/survey/{{ res.id }}" novalidate
+      onsubmit="return validateSurvey(event)">
 
 {# ── Q0 お支払い方法 ── #}
 {% set sv = survey %}
@@ -28,14 +42,14 @@
     <input type="radio" name="payment_method" value="in_store" required
            style="width:auto;margin:0;padding:0"
            {{ 'checked' if sv and sv.payment_method == 'in_store' }}
-           onchange="document.getElementById('transfer_wrap').style.display='none'">
+           onchange="setTransferWrap(false)">
     店頭払い　9,000円（キャッシュレスのみ）
   </label>
   <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
     <input type="radio" name="payment_method" value="transfer" required
            style="width:auto;margin:0;padding:0"
            {{ 'checked' if sv and sv.payment_method == 'transfer' }}
-           onchange="document.getElementById('transfer_wrap').style.display='block'">
+           onchange="setTransferWrap(true)">
     事前振込割　8,800円
   </label>
   <div id="transfer_wrap"
@@ -48,8 +62,9 @@
       KMB クリエイティブ
     </p>
     <label style="margin-top:12px">振込人名義（カタカナ）<span style="color:red">*</span></label>
-    <input type="text" name="transfer_name" placeholder="ヤマダ タロウ"
+    <input type="text" id="transfer_name_input" name="transfer_name" placeholder="ヤマダ タロウ"
            style="margin-top:4px"
+           {{ 'required' if sv and sv.payment_method == 'transfer' }}
            value="{{ (sv.transfer_name or '') if sv else '' }}">
   </div>
 </fieldset>
@@ -139,7 +154,7 @@
 <div style="margin-bottom:20px">
   <label style="margin-top:0">アレルギーはございますか？（空欄可）</label>
   <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
-    ◆ メニュー決定後の変更はできませんのでご了承ください。
+    ※ メニュー決定後の変更はできませんのでご了承ください。
   </p>
   <textarea name="allergy" rows="2">{{ (sv.allergy or '') if sv else '' }}</textarea>
 </div>
@@ -159,7 +174,7 @@
   <p style="font-size:0.8rem;color:#555;margin:4px 0 4px">
     アルコールが飲めない方には【オリジナルノンアルカクテル】を数種類ご用意します。<br>
     希望される場合は人数をご記入ください。<br>
-    <span style="color:#c62828">◆ 事前の仕込みが必要ですので、急な対応はできかねます。</span>
+    <span style="color:#c62828">※ 事前の仕込みが必要ですので、急な対応はできかねます。</span>
   </p>
   <input type="number" name="nonalcoholic_count" min="0" value="{{ sv.nonalcoholic_count if sv else 0 }}"
          style="width:100px">
@@ -194,8 +209,8 @@
     <input type="checkbox" name="terms_agreed" value="1" required
            style="width:auto;margin-top:3px;flex-shrink:0;padding:0"
            {{ 'checked' if sv and sv.terms_agreed }}>
-    <span style="font-size:0.88rem">
-      上記の注意事項・キャンセルポリシーすべてに同意します（了解しました）
+    <span style="font-size:1rem;font-weight:600">
+      上記の注意事項・キャンセルポリシーすべてに同意します
     </span>
   </label>
 </div>
@@ -206,5 +221,32 @@
 
 </form>
 </div>
+
+<script>
+function validateSurvey(e) {
+  var form = e.target;
+
+  // ブラウザデフォルトバリデーションを使いつつ、最初の無効フィールドにスクロール＆フォーカス
+  if (!form.checkValidity()) {
+    e.preventDefault();
+
+    // 未入力の最初の要素を探してフォーカス
+    var invalid = form.querySelector(':invalid');
+    if (invalid) {
+      invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // scrollIntoView後に少し待ってフォーカス（スクロールアニメーションのため）
+      setTimeout(function() { invalid.focus(); }, 300);
+
+      // radio/checkbox の場合は親fieldsetのlegendまでスクロール
+      if (invalid.type === 'radio' || invalid.type === 'checkbox') {
+        var fs = invalid.closest('fieldset') || invalid.closest('div');
+        if (fs) fs.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+    return false;
+  }
+  return true;
+}
+</script>
 {% endif %}
 {% endblock %}

@@ -5,7 +5,7 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, BackgroundTasks, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -94,6 +94,7 @@ async def booking_form(request: Request, target_date: str,
 @router.post("/book", response_class=HTMLResponse)
 async def booking_submit(
     request: Request,
+    background_tasks: BackgroundTasks,
     target_date: str   = Form(...),
     rotation: int       = Form(...),
     num_people: int     = Form(...),
@@ -172,8 +173,8 @@ async def booking_submit(
                     error="申し訳ありません、ご希望の人数分の空席がなくなりました。")
 
     res = models.get_reservation(rid)
-    # 管理者に通知
-    mailer.send_admin_notification(res, cfg)
+    # 管理者通知メールはバックグラウンドで送信（レスポンスをブロックしない）
+    background_tasks.add_task(mailer.send_admin_notification, res, cfg)
 
     if USE_SMS_VERIFICATION:
         # SMS 認証フロー
@@ -184,7 +185,8 @@ async def booking_submit(
         # メール認証フロー（デフォルト）
         token = models.store_verification_token(rid)
         res = models.get_reservation(rid)
-        mailer.send_verification(res, cfg, token)
+        # 確認メールもバックグラウンドで送信（レスポンスをブロックしない）
+        background_tasks.add_task(mailer.send_verification, res, cfg, token)
         return RedirectResponse(f"/kmb/complete/{rid}", status_code=303)
 
 
@@ -245,7 +247,7 @@ async def survey_form(request: Request, rid: int):
     weekday_name = _WEEKDAY_NAMES[res_date.weekday()]
     return _tpl("customer/survey.html", request,
                 res=res, survey=survey, can_edit=can_edit,
-                start_time=start_time, weekday_name=weekday_name)
+                start_time=start_time, weekday_name=weekday_name, error=None)
 
 
 @router.post("/survey/{rid}", response_class=HTMLResponse)
@@ -256,6 +258,22 @@ async def survey_submit(request: Request, rid: int):
     if date.fromisoformat(res["date"]) < date.today():
         return RedirectResponse(f"/kmb/verified/{rid}")
     form = await request.form()
+    payment_method = form.get("payment_method")
+    transfer_name  = (form.get("transfer_name") or "").strip() or None
+
+    # 事前振込を選択した場合は振込人名義が必須
+    if payment_method == "transfer" and not transfer_name:
+        all_defaults = models.get_all_defaults()
+        cfg = models.get_effective_config(res["date"], all_defaults)
+        start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
+        res_date = date.fromisoformat(res["date"])
+        weekday_name = _WEEKDAY_NAMES[res_date.weekday()]
+        survey = models.get_survey(rid)
+        return _tpl("customer/survey.html", request,
+                    res=res, survey=survey, can_edit=True,
+                    start_time=start_time, weekday_name=weekday_name,
+                    error="事前振込を選択された場合は振込人名義（カタカナ）を入力してください。")
+
     models.save_survey(rid, {
         "source":             form.get("source"),
         "source_other":       (form.get("source_other") or "").strip() or None,
@@ -267,8 +285,8 @@ async def survey_submit(request: Request, rid: int):
         "nonalcoholic_count": int(form.get("nonalcoholic_count") or 0),
         "info_preference":    form.get("info_preference"),
         "other_questions":    (form.get("other_questions") or "").strip() or None,
-        "payment_method":     form.get("payment_method"),
-        "transfer_name":      (form.get("transfer_name") or "").strip() or None,
+        "payment_method":     payment_method,
+        "transfer_name":      transfer_name,
         "terms_agreed":       1,
     })
     return RedirectResponse(f"/kmb/verified/{rid}", status_code=303)
