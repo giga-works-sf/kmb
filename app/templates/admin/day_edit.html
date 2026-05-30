@@ -20,8 +20,29 @@
       class="move-form" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
   <input type="hidden" name="back_date" value="{{ target_date }}"
          style="width:auto;padding:0;border:none;margin:0">
-  <input type="date" name="new_date" value="{{ target_date }}" lang="ja"
-         class="move-date" style="width:150px;padding:5px;margin:0">
+  {# 年/月/日 セレクト（<input type="date">はiOS Safariで英語表示になるため使わない） #}
+  {% set ty = target_date[:4]|int %}
+  {% set tm = target_date[5:7]|int %}
+  {% set td = target_date[8:10]|int %}
+  <select class="move-date-y" style="width:78px;padding:5px;margin:0">
+    {% for y in range(ty, ty + 2) %}
+    <option value="{{ y }}" {{ 'selected' if y == ty }}>{{ y }}年</option>
+    {% endfor %}
+  </select>
+  <select class="move-date-m" style="width:60px;padding:5px;margin:0">
+    {% for m in range(1, 13) %}
+    <option value="{{ '0' ~ m if m < 10 else m }}"
+            {{ 'selected' if m == tm }}>{{ m }}月</option>
+    {% endfor %}
+  </select>
+  <select class="move-date-d" style="width:56px;padding:5px;margin:0">
+    {% for d in range(1, 32) %}
+    <option value="{{ '0' ~ d if d < 10 else d }}"
+            {{ 'selected' if d == td }}>{{ d }}日</option>
+    {% endfor %}
+  </select>
+  {# 実際の送信値はhiddenで合成 #}
+  <input type="hidden" name="new_date" class="move-date" value="{{ target_date }}">
   <span class="move-dow" style="font-size:0.82rem;color:#555;min-width:24px"></span>
   <select name="new_rotation" class="rot-select" style="width:auto;padding:5px;margin:0">
     <option value="1" class="rot-opt-1" {{ 'selected' if res.rotation == 1 }}>1回目</option>
@@ -81,7 +102,7 @@
     {% if sv.looking_forward %}楽しみ: {{ sv.looking_forward }}<br>{% endif %}
     {% if sv.allergy %}アレルギー: {{ sv.allergy }}<br>{% endif %}
     {% if sv.disliked_food %}苦手食材: {{ sv.disliked_food }}<br>{% endif %}
-    ノンアル希望: {{ sv.nonalcoholic_count }}名<br>
+    {% if sv.nonalcoholic_count %}ノンアル希望: {{ sv.nonalcoholic_count }}名<br>{% endif %}
     情報配信: {{ info_labels.get(sv.info_preference, sv.info_preference or '—') }}<br>
     {% if sv.other_questions %}その他: {{ sv.other_questions }}<br>{% endif %}
   </div>
@@ -191,7 +212,7 @@
       予約を追加
     </button>
     <span style="font-size:0.78rem;color:#888;margin-left:10px">
-      ※ 確認なしで即時「active」で登録されます
+      ※ [確定済]として登録されます
     </span>
   </form>
 </div>
@@ -255,21 +276,49 @@
 {% endif %}
 
 <script>
-document.querySelectorAll('.move-date').forEach(function(dateInput) {
-  var form   = dateInput.closest('.move-form');
-  var rotSel = form.querySelector('.rot-select');
-  var opt1   = rotSel ? rotSel.querySelector('.rot-opt-1') : null;
-  var opt2   = rotSel ? rotSel.querySelector('.rot-opt-2') : null;
+document.querySelectorAll('.move-form').forEach(function(form) {
+  var hiddenDate = form.querySelector('.move-date');       // hidden input
+  var selY    = form.querySelector('.move-date-y');
+  var selM    = form.querySelector('.move-date-m');
+  var selD    = form.querySelector('.move-date-d');
+  var rotSel  = form.querySelector('.rot-select');
+  var opt1    = rotSel ? rotSel.querySelector('.rot-opt-1') : null;
+  var opt2    = rotSel ? rotSel.querySelector('.rot-opt-2') : null;
   var dowSpan = form.querySelector('.move-dow');
+
+  // 月の最終日を返す（mは1始まり）
+  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+
+  // 日セレクトを月に合わせて再構築（月末調整）
+  function rebuildDays() {
+    var y = parseInt(selY.value);
+    var m = parseInt(selM.value);
+    var curD = parseInt(selD.value) || 1;
+    var maxD = daysInMonth(y, m);
+    selD.innerHTML = '';
+    for (var d = 1; d <= maxD; d++) {
+      var opt = document.createElement('option');
+      opt.value = d < 10 ? '0' + d : '' + d;
+      opt.textContent = d + '日';
+      if (d === curD || (curD > maxD && d === maxD)) opt.selected = true;
+      selD.appendChild(opt);
+    }
+  }
+
+  // 年-月-日 を YYYY-MM-DD に合成
+  function composeDate() {
+    return selY.value + '-' + selM.value + '-' + selD.value;
+  }
 
   function updateConfig(dateVal) {
     if (!dateVal) return;
+    if (hiddenDate) hiddenDate.value = dateVal;
 
     // 曜日をJSで計算して即時表示
     if (dowSpan) {
-      var days = ['日','月','火','水','木','金','土'];
+      var wdays = ['日','月','火','水','木','金','土'];
       var d = new Date(dateVal + 'T00:00:00');
-      dowSpan.textContent = '(' + days[d.getDay()] + ')';
+      dowSpan.textContent = '(' + wdays[d.getDay()] + ')';
     }
 
     // APIで回転数・時間を取得
@@ -287,8 +336,12 @@ document.querySelectorAll('.move-date').forEach(function(dateInput) {
       .catch(function(){});
   }
 
-  updateConfig(dateInput.value);
-  dateInput.addEventListener('change', function(){ updateConfig(this.value); });
+  selY.addEventListener('change', function() { rebuildDays(); updateConfig(composeDate()); });
+  selM.addEventListener('change', function() { rebuildDays(); updateConfig(composeDate()); });
+  selD.addEventListener('change', function() { updateConfig(composeDate()); });
+
+  // 初期表示（曜日・回転情報を即時反映）
+  updateConfig(composeDate());
 });
 
 // 手動入力フォーム: 回転変更時に人数の上限を更新
