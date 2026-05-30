@@ -135,6 +135,34 @@
   var lang = 'ja';
   localStorage.removeItem('kmb_lang');
 
+  // ── 人数セレクトを残席数に合わせて再構築 ──────────────────────────
+  function rebuildNumPeople(remaining) {
+    var nppSel = document.getElementById('num-people-select');
+    if (!nppSel) return;
+    var currentVal = parseInt(nppSel.value, 10) || 1;
+    nppSel.innerHTML = '';
+    for (var i = 1; i <= remaining; i++) {
+      var opt = document.createElement('option');
+      opt.value = i;
+      opt.setAttribute('data-num', i);
+      opt.textContent = lang === 'en' ? i + ' person(s)' : i + '名';
+      nppSel.appendChild(opt);
+    }
+    // 以前の選択人数が新しい残席数以内なら維持、超えていたら最大値に丸める
+    nppSel.value = Math.min(currentVal, remaining);
+  }
+
+  // ── 開始時間セレクトの change で人数を再構築 ──────────────────────
+  var rotSel = document.getElementById('rotation-select');
+  if (rotSel) {
+    rotSel.addEventListener('change', function() {
+      var selOpt   = rotSel.options[rotSel.selectedIndex];
+      var remaining = parseInt(selOpt.getAttribute('data-remaining'), 10);
+      if (!isNaN(remaining)) rebuildNumPeople(remaining);
+    });
+  }
+
+  // ── 言語切り替え ───────────────────────────────────────────────────
   function applyLang(l) {
     // 通常ラベル翻訳
     document.querySelectorAll('.t[data-' + l + ']').forEach(function(el) {
@@ -151,7 +179,6 @@
     }
 
     // 回転セレクトの選択肢テキスト（option内はspanが効かないためJS処理）
-    var rotSel = document.getElementById('rotation-select');
     if (rotSel) {
       Array.from(rotSel.options).forEach(function(opt) {
         var time = opt.getAttribute('data-time');
