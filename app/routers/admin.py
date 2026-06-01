@@ -163,11 +163,27 @@ async def day_config_api(target_date: str):
     all_defaults = models.get_all_defaults()
     cfg = models.get_effective_config(target_date, all_defaults)
     wd = _WEEKDAY_NAMES[date.fromisoformat(target_date).weekday()]
+
+    # 残席数を計算
+    inventory = models.get_inventory_bulk([target_date])
+    def _remaining(rot: int) -> int:
+        cap = cfg.get(f"capacity_{rot}")
+        if not cap:
+            return 0
+        inv = inventory.get((target_date, rot), {"booked": 0})
+        return max(0, cap - inv["booked"])
+
+    rem1 = _remaining(1) if cfg.get("start_time_1") else 0
+    rem2 = _remaining(2) if cfg.get("start_time_2") else None
+
     return JSONResponse({
-        "weekday":       wd,
+        "weekday":        wd,
+        "is_closed":      bool(cfg.get("is_closed")),
         "has_rotation_2": cfg.get("start_time_2") is not None,
-        "start_time_1":  cfg.get("start_time_1"),
-        "start_time_2":  cfg.get("start_time_2"),
+        "start_time_1":   cfg.get("start_time_1"),
+        "start_time_2":   cfg.get("start_time_2"),
+        "remaining_1":    rem1,
+        "remaining_2":    rem2,
     })
 
 

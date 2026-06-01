@@ -228,8 +228,17 @@
   過去の日付は変更できません
 </p>
 {% else %}
-<div class="form-wrap" style="max-width:560px">
+{% set has_active = active_res | length > 0 %}
+{% if has_active %}
+<div style="color:#c62828;font-size:0.85rem;margin-bottom:12px;padding:10px 14px;
+            background:#fdecea;border-radius:4px;border-left:4px solid #ea4335">
+  ⚠ 予約が入っているため設定を変更できません。変更する場合は予約を削除してください。
+</div>
+{% endif %}
+<div class="form-wrap" style="max-width:560px{% if has_active %};opacity:0.55{% endif %}">
   <form method="post" action="/kmb/admin/day/{{ target_date }}">
+    <fieldset {% if has_active %}disabled{% endif %}
+              style="border:none;padding:0;margin:0">
 
     <label>コース内容（空欄でデフォルト値を使用）</label>
     <textarea name="course" rows="3"
@@ -271,6 +280,7 @@
     </label>
 
     <button class="btn btn-primary" type="submit" style="margin-top:20px">保存</button>
+    </fieldset>
   </form>
 </div>
 {% endif %}
@@ -321,16 +331,53 @@ document.querySelectorAll('.move-form').forEach(function(form) {
       dowSpan.textContent = '(' + wdays[d.getDay()] + ')';
     }
 
-    // APIで回転数・時間を取得
+    var submitBtn = form.querySelector('button[type="submit"]');
+
+    // APIで回転数・時間・残席・定休日を取得
     fetch('/kmb/admin/api/day/' + dateVal + '/config')
       .then(function(r){ return r.json(); })
       .then(function(data) {
-        if (opt1) opt1.textContent = '1回目' + (data.start_time_1 ? ' ' + data.start_time_1 + '-' : '');
+        // ── 定休日 ──
+        if (data.is_closed) {
+          if (opt1) opt1.textContent = '店休日';
+          if (opt2) { opt2.textContent = ''; opt2.disabled = true; }
+          if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.45'; }
+          return;
+        }
+
+        // ── 残席チェック ──
+        var rem1 = (data.remaining_1 !== undefined) ? data.remaining_1 : 99;
+        var rem2 = (data.remaining_2 !== undefined) ? data.remaining_2 : null;
+        var allFull = (rem1 === 0) && (!data.has_rotation_2 || rem2 === 0);
+
+        if (opt1) {
+          if (rem1 === 0) {
+            opt1.textContent = '1回目 満席';
+          } else {
+            opt1.textContent = '1回目' + (data.start_time_1 ? ' ' + data.start_time_1 + '-' : '')
+                             + '（残' + rem1 + '席）';
+          }
+        }
         if (opt2) {
-          opt2.textContent = '2回目' + (data.start_time_2 ? ' ' + data.start_time_2 + '-' : '');
-          opt2.disabled = !data.has_rotation_2;
-          opt2.style.color = data.has_rotation_2 ? '' : '#bbb';
+          if (!data.has_rotation_2) {
+            opt2.textContent = '';
+            opt2.disabled = true;
+            opt2.style.color = '#bbb';
+          } else if (rem2 === 0) {
+            opt2.textContent = '2回目 満席';
+            opt2.disabled = false;
+          } else {
+            opt2.textContent = '2回目' + (data.start_time_2 ? ' ' + data.start_time_2 + '-' : '')
+                             + '（残' + rem2 + '席）';
+            opt2.disabled = false;
+            opt2.style.color = '';
+          }
           if (!data.has_rotation_2 && rotSel.value === '2') rotSel.value = '1';
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = allFull;
+          submitBtn.style.opacity = allFull ? '0.45' : '';
         }
       })
       .catch(function(){});

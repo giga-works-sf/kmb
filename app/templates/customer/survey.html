@@ -66,7 +66,9 @@ function setTransferWrap(show) {
            style="margin-top:4px"
            {{ 'required' if sv and sv.payment_method == 'transfer' }}
            value="{{ (sv.transfer_name or '') if sv else '' }}">
+    <div id="err-transfer_name" style="display:none;color:#c62828;font-size:0.82rem;margin-top:6px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
   </div>
+  <div id="err-payment_method" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </fieldset>
 
 {# ── Q1 来店経緯 ── #}
@@ -87,6 +89,7 @@ function setTransferWrap(show) {
     <textarea name="source_other" rows="2" placeholder="詳しく教えてください"
               style="margin-top:0">{{ (sv.source_other or '') if sv else '' }}</textarea>
   </div>
+  <div id="err-source" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </fieldset>
 
 {# ── Q2 来店回数 ── #}
@@ -102,6 +105,7 @@ function setTransferWrap(show) {
     {{ label }}
   </label>
   {% endfor %}
+  <div id="err-visit_count" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </fieldset>
 
 {# ── Q3 会員 ── #}
@@ -117,6 +121,7 @@ function setTransferWrap(show) {
     {{ label }}
   </label>
   {% endfor %}
+  <div id="err-is_member" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </fieldset>
 
 {# ── Q4 情報配信（会員の直後に移動） ── #}
@@ -142,6 +147,7 @@ function setTransferWrap(show) {
     </span>
   </label>
   {% endfor %}
+  <div id="err-info_preference" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </fieldset>
 
 {# ── Q5 楽しみ ── #}
@@ -213,6 +219,7 @@ function setTransferWrap(show) {
       上記の注意事項・キャンセルポリシーすべてに同意します
     </span>
   </label>
+  <div id="err-terms" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </div>
 
 <button class="btn btn-primary" type="submit" style="width:100%;font-size:1rem">
@@ -224,28 +231,71 @@ function setTransferWrap(show) {
 
 <script>
 function validateSurvey(e) {
+  e.preventDefault();
   var form = e.target;
 
-  // ブラウザデフォルトバリデーションを使いつつ、最初の無効フィールドにスクロール＆フォーカス
-  if (!form.checkValidity()) {
-    e.preventDefault();
+  function showErr(id, msg) {
+    var el = document.getElementById(id);
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+  }
+  function hideErr(id) {
+    var el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.style.display = 'none'; }
+  }
 
-    // 未入力の最初の要素を探してフォーカス
-    var invalid = form.querySelector(':invalid');
-    if (invalid) {
-      invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // scrollIntoView後に少し待ってフォーカス（スクロールアニメーションのため）
-      setTimeout(function() { invalid.focus(); }, 300);
+  var firstErrId = null;
 
-      // radio/checkbox の場合は親fieldsetのlegendまでスクロール
-      if (invalid.type === 'radio' || invalid.type === 'checkbox') {
-        var fs = invalid.closest('fieldset') || invalid.closest('div');
-        if (fs) fs.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+  // ── ラジオボタン必須チェック ──────────────────────────────
+  var radioGroups = ['payment_method', 'source', 'visit_count', 'is_member', 'info_preference'];
+  for (var i = 0; i < radioGroups.length; i++) {
+    var name = radioGroups[i];
+    if (form.querySelector('input[name="' + name + '"]:checked')) {
+      hideErr('err-' + name);
+    } else {
+      showErr('err-' + name, '選択して下さい');
+      if (!firstErrId) firstErrId = 'err-' + name;
+    }
+  }
+
+  // ── 振込人名義チェック ────────────────────────────────────
+  var payChecked = form.querySelector('input[name="payment_method"]:checked');
+  var tNameInput = document.getElementById('transfer_name_input');
+  if (payChecked && payChecked.value === 'transfer') {
+    var tName = (tNameInput ? tNameInput.value : '').trim();
+    var katakana = /^[゠-ヿー\s　]+$/;
+    if (!tName) {
+      showErr('err-transfer_name', '振込人名義を入力して下さい');
+      if (!firstErrId) firstErrId = 'err-transfer_name';
+    } else if (!katakana.test(tName)) {
+      showErr('err-transfer_name', 'カタカナで入力して下さい');
+      if (!firstErrId) firstErrId = 'err-transfer_name';
+    } else {
+      hideErr('err-transfer_name');
+    }
+  } else {
+    hideErr('err-transfer_name');
+  }
+
+  // ── 同意チェックボックス ──────────────────────────────────
+  var terms = form.querySelector('input[name="terms_agreed"]');
+  if (terms && terms.checked) {
+    hideErr('err-terms');
+  } else {
+    showErr('err-terms', 'キャンセルポリシーとご利用ルールに同意をお願いいたします');
+    if (!firstErrId) firstErrId = 'err-terms';
+  }
+
+  // ── エラーがあればスクロールして止める ────────────────────
+  if (firstErrId) {
+    var errEl = document.getElementById(firstErrId);
+    if (errEl) {
+      errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     return false;
   }
-  return true;
+
+  // すべてOK → 送信
+  form.submit();
 }
 </script>
 {% endif %}
