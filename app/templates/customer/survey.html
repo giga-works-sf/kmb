@@ -43,7 +43,7 @@ function setTransferWrap(show) {
            style="width:auto;margin:0;padding:0"
            {{ 'checked' if sv and sv.payment_method == 'in_store' }}
            onchange="setTransferWrap(false)">
-    店頭払い　9,000円（キャッシュレスのみ）
+    店頭払い　9,300円（キャッシュレスのみ）
   </label>
   <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
     <input type="radio" name="payment_method" value="transfer" required
@@ -66,6 +66,9 @@ function setTransferWrap(show) {
            style="margin-top:4px"
            {{ 'required' if sv and sv.payment_method == 'transfer' }}
            value="{{ (sv.transfer_name or '') if sv else '' }}">
+    <p style="font-size:0.8rem;color:#c62828;margin:6px 0 0">
+      ※ 振込人名義を間違えると入金の確認が出来ませんのでご注意下さい。
+    </p>
     <div id="err-transfer_name" style="display:none;color:#c62828;font-size:0.82rem;margin-top:6px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
   </div>
   <div id="err-payment_method" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>

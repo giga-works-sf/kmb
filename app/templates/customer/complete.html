@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block title %}ご予約のリクエストを受け付けました{% endblock %}
 {% block content %}
-<h2>📧 ご予約リクエストを受け付けました</h2>
+<h2>📱 ご予約リクエストを受け付けました</h2>
 {% if resent %}
-<div class="msg-ok">確認メールを再送しました。</div>
+<div class="msg-ok">SMSを再送しました。</div>
 {% else %}
-<div class="msg-ok">確認メールを {{ res.email }} に送信しました。</div>
+<div class="msg-ok">SMSを {{ res.phone | format_phone }} に送信しました。</div>
 {% endif %}
 
 <div style="margin-top:16px;padding:18px 20px;background:#fff8e1;
             border:2px solid #f9a825;border-radius:8px;text-align:center">
   <p style="font-size:1.05rem;font-weight:700;color:#e65100;line-height:1.7;margin:0">
-    📩 ご連絡先を確認するために<br>送信されたメールのURLをクリックして下さい
+    📱 ご連絡先を確認するために<br>送信されたSMSのURLをクリックして下さい
   </p>
   <p style="font-size:0.9rem;color:#c62828;font-weight:600;margin-top:8px">
     ⏰ 有効期限：10分
@@ -19,14 +19,14 @@
 </div>
 <div style="text-align:center;margin-top:14px">
   <p style="font-size:0.95rem;color:#555">
-    メールが届いていない場合は迷惑メールフォルダをご確認ください。
+    SMSが届いていない場合はお電話番号をご確認ください。
   </p>
   <form method="post" action="/kmb/resend-email/{{ res.id }}" style="margin-top:10px">
     <button type="submit"
             style="background:#e8f0fe;border:1px solid #1a73e8;color:#1a73e8;
                    cursor:pointer;font-size:1rem;font-weight:600;
                    padding:10px 28px;border-radius:6px;font-family:inherit">
-      📨 メールを再送する
+      📱 SMSを再送する
     </button>
   </form>
 </div>

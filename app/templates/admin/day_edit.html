@@ -64,8 +64,17 @@
 {% set rot_pending = pending_res | selectattr("rotation", "equalto", rot_num) | list %}
 
 {# 予約一覧セクション #}
+{% set cap = cfg.capacity_1 if rot_num == 1 else cfg.capacity_2 %}
+{% set total_booked    = rot_active | map(attribute='num_people') | sum %}
+{% set total_confirmed = rot_active | selectattr('confirmed', 'equalto', 1) | map(attribute='num_people') | sum %}
+{% set total_unconfirmed = total_booked - total_confirmed %}
 <h3 style="font-size:1rem;margin-top:{% if rot_num > 1 %}28px{% else %}0{% endif %}">
   予約一覧{% if two_rot %} {{ rot_time }}-{% endif %}
+  {% if cap %}
+  <span style="font-size:0.8rem;font-weight:normal;color:#555;margin-left:8px">
+    ({{ cap }}席　{{ total_booked }}名予約済み　{{ total_unconfirmed }}名未確定)
+  </span>
+  {% endif %}
 </h3>
 {% if not rot_active %}
 <p style="color:#888;font-size:0.9rem">予約はありません</p>
@@ -91,7 +100,7 @@
   {% set source_labels  = {'terujii':'てるじい経由','ourdays':'OURDAYS さん経由','yukawa':'湯川シェフ経由','other':'その他'} %}
   {% set visit_labels   = {'first':'はじめて','2nd':'２回目','3rd_plus':'３回目以上'} %}
   {% set info_labels    = {'none':'希望しない','email':'メール希望','line':'LINE参加希望'} %}
-  {% set payment_labels = {'in_store':'店頭払い 9,000円','transfer':'事前振込割 8,800円'} %}
+  {% set payment_labels = {'in_store':'店頭払い 9,300円','transfer':'事前振込割 8,800円'} %}
   <div style="margin-top:8px;padding:8px 10px;background:#f9f9f9;border-radius:4px;
               border-left:3px solid #ccc;font-size:0.8rem;color:#555;line-height:1.8">
     <strong style="font-size:0.82rem;color:#333">【来店前アンケート】</strong><br>

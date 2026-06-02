@@ -22,6 +22,7 @@
   <span id="cal-num-note" style="font-size:0.82rem;color:#e65100">
     ← まず人数を選択してください
   </span>
+
 </div>
 
 {# ── カレンダーナビ ── #}
@@ -188,11 +189,9 @@
   function applyCount(n) {
     count = n;
     if (count) {
-      note.textContent = count + '名で予約できる日を選んでください';
-      note.style.color = '#2e7d32';
+      note.style.display = 'none';
     } else {
-      note.textContent = '← まず人数を選択してください';
-      note.style.color = '#e65100';
+      note.style.display = '';
     }
     updateCells();
   }
