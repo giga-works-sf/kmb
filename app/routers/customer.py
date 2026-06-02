@@ -57,7 +57,8 @@ async def customer_calendar_month(request: Request, year: int, month: int):
 
 @router.get("/book/{target_date}", response_class=HTMLResponse)
 async def booking_form(request: Request, target_date: str,
-                        rotation: Optional[int] = None):
+                        rotation: Optional[int] = None,
+                        num_people: Optional[int] = None):
     today = date.today()
     earliest, latest = services.get_booking_window(today)
     try:
@@ -84,10 +85,13 @@ async def booking_form(request: Request, target_date: str,
     sel = next(r for r in rotations if r["rotation"] == rotation)
 
     weekday_name = _WEEKDAY_NAMES[d.weekday()]
+    # num_people: カレンダーから引き継ぎ。不正値はNoneに戻す
+    preset_num = num_people if (num_people and 1 <= num_people <= sel["remaining"]) else None
     return _tpl("customer/booking.html", request,
                 target_date=target_date, weekday_name=weekday_name, cfg=cfg,
                 rotations=rotations, selected_rotation=rotation,
                 remaining=sel["remaining"],
+                preset_num=preset_num,
                 error=None)
 
 

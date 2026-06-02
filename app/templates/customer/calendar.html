@@ -4,8 +4,77 @@
 <p style="font-size:0.82rem;color:#888;margin-bottom:4px">こめむぎぶどう &nbsp; Kome-Mugi-Budo</p>
 <h2>予約フォーム &nbsp; Reservation Form</h2>
 
+{# ── 人数選択 ── #}
+<div style="background:#fff;border:2px solid #1a73e8;border-radius:8px;
+            padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <label for="cal-num-people"
+         style="font-size:0.95rem;font-weight:700;margin:0;white-space:nowrap">
+    予約人数を選んでください <span style="color:red">*</span>
+  </label>
+  <select id="cal-num-people"
+          style="width:130px;padding:7px 10px;font-size:0.95rem;
+                 border:1px solid #1a73e8;border-radius:4px;margin:0">
+    <option value="">-- 人数 --</option>
+    {% for i in range(1, 9) %}
+    <option value="{{ i }}">{{ i }}名</option>
+    {% endfor %}
+  </select>
+  <span id="cal-num-note" style="font-size:0.82rem;color:#e65100">
+    ← まず人数を選択してください
+  </span>
+</div>
+
+{# ── カレンダーナビ ── #}
+<div class="cal-nav">
+  {% if show_prev %}
+  <a href="/kmb/calendar/{{ nav.prev_year }}/{{ nav.prev_month }}">&#9664;</a>
+  {% else %}<span style="width:24px"></span>{% endif %}
+  <span>{{ nav.label }}</span>
+  {% if show_next %}
+  <a href="/kmb/calendar/{{ nav.next_year }}/{{ nav.next_month }}">&#9654;</a>
+  {% else %}<span style="width:24px"></span>{% endif %}
+</div>
+
+{# ── カレンダー本体 ── #}
+<table class="calendar">
+  <thead><tr>
+    <th>月</th><th>火</th><th>水</th><th>木</th><th>金</th>
+    <th class="sat">土</th><th class="sun">日</th>
+  </tr></thead>
+  <tbody>
+  {% for week in weeks %}
+  <tr>
+    {% for cell in week %}
+    {% if cell is none %}
+    <td class="empty"></td>
+
+    {% elif cell.kind == 'available' %}
+    <td class="available cal-bookable"
+        data-date="{{ cell.date }}"
+        data-rem-1="{{ cell.rem_1 }}"
+        data-rem-2="{{ cell.rem_2 }}"
+        data-time-1="{{ cell.time_1 or '' }}"
+        data-time-2="{{ cell.time_2 or '' }}"
+        data-orig-display="{{ cell.display }}">
+      <div class="day-num">{{ cell.day }}</div>
+      <div class="day-info">{{ cell.display }}</div>
+    </td>
+
+    {% else %}
+    <td class="{{ cell.kind }}">
+      <div class="day-num">{{ cell.day }}</div>
+      <div class="day-info">{{ cell.display }}</div>
+    </td>
+    {% endif %}
+    {% endfor %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{# ── お知らせ（カレンダーの下） ── #}
 <div style="background:#fff;border:2px solid #e0b040;border-radius:10px;
-            padding:20px 22px;margin-bottom:20px;line-height:2;font-size:0.88rem;color:#333">
+            padding:20px 22px;margin-top:20px;line-height:2;font-size:0.88rem;color:#333">
 
   <p style="font-size:1rem;font-weight:700;text-align:center;margin-bottom:12px;color:#1a1a1a">
     【 KMB こめむぎぶどう 】笹塚新店　予約申込みフォーム
@@ -58,42 +127,78 @@
   </p>
 </div>
 
-<div class="cal-nav">
-  {% if show_prev %}
-  <a href="/kmb/calendar/{{ nav.prev_year }}/{{ nav.prev_month }}">&#9664;</a>
-  {% else %}<span style="width:24px"></span>{% endif %}
-  <span>{{ nav.label }}</span>
-  {% if show_next %}
-  <a href="/kmb/calendar/{{ nav.next_year }}/{{ nav.next_month }}">&#9654;</a>
-  {% else %}<span style="width:24px"></span>{% endif %}
-</div>
-<table class="calendar">
-  <thead><tr>
-    <th>月</th><th>火</th><th>水</th><th>木</th><th>金</th>
-    <th class="sat">土</th><th class="sun">日</th>
-  </tr></thead>
-  <tbody>
-  {% for week in weeks %}
-  <tr>
-    {% for cell in week %}
-    {% if cell is none %}
-    <td class="empty"></td>
-    {% elif cell.kind == 'available' %}
-    <td class="available"
-        onclick="location.href='/kmb/book/{{ cell.date }}'"
-        title="{{ cell.date }}">
-      <div class="day-num">{{ cell.day }}</div>
-      <div class="day-info">{{ cell.display }}</div>
-    </td>
-    {% else %}
-    <td class="{{ cell.kind }}">
-      <div class="day-num">{{ cell.day }}</div>
-      <div class="day-info">{{ cell.display }}</div>
-    </td>
-    {% endif %}
-    {% endfor %}
-  </tr>
-  {% endfor %}
-  </tbody>
-</table>
+<script>
+(function () {
+  var sel   = document.getElementById('cal-num-people');
+  var note  = document.getElementById('cal-num-note');
+  var count = 0;
+
+  // セル更新
+  function updateCells() {
+    document.querySelectorAll('.cal-bookable').forEach(function (td) {
+      var rem1  = parseInt(td.getAttribute('data-rem-1'))  || 0;
+      var rem2  = parseInt(td.getAttribute('data-rem-2'))  || 0;
+      var time1 = td.getAttribute('data-time-1') || '';
+      var time2 = td.getAttribute('data-time-2') || '';
+      var info  = td.querySelector('.day-info');
+
+      if (!count) {
+        // 未選択: 元の表示に戻す、クリック無効
+        info.textContent = td.getAttribute('data-orig-display');
+        td.classList.add('available');
+        td.classList.remove('full');
+        td.style.cursor   = 'default';
+        td.style.opacity  = '0.5';
+        td.onclick = null;
+        return;
+      }
+
+      // 選択済み: この人数で予約できる回転だけ表示
+      var times = [];
+      if (rem1 >= count && time1) times.push(time1 + '-');
+      if (rem2 >= count && time2) times.push(time2 + '-');
+
+      td.style.opacity = '';
+      if (times.length > 0) {
+        info.textContent = times.join(' / ');
+        td.classList.add('available');
+        td.classList.remove('full');
+        td.style.cursor = 'pointer';
+        (function (date) {
+          td.onclick = function () { goBook(date); };
+        })(td.getAttribute('data-date'));
+      } else {
+        info.textContent = '☓';
+        td.classList.remove('available');
+        td.classList.add('full');
+        td.style.cursor = 'default';
+        td.onclick = null;
+      }
+    });
+  }
+
+  function goBook(date) {
+    if (!count) {
+      alert('まず人数を選択してください');
+      return;
+    }
+    window.location.href = '/kmb/book/' + date + '?num_people=' + count;
+  }
+
+  sel.addEventListener('change', function () {
+    count = parseInt(this.value) || 0;
+    if (count) {
+      note.textContent = count + '名で予約できる日を選んでください';
+      note.style.color = '#2e7d32';
+    } else {
+      note.textContent = '← まず人数を選択してください';
+      note.style.color = '#e65100';
+    }
+    updateCells();
+  });
+
+  // 初期状態: クリック無効
+  updateCells();
+})();
+</script>
 {% endblock %}

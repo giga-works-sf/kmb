@@ -73,13 +73,18 @@ def _customer_cell(d: date, cfg: dict, inventory: dict,
         return cell
 
     available_times = []
+    rems  = {1: 0, 2: 0}
+    times = {1: None, 2: None}
     for rot in (1, 2):
         t = cfg["start_time_1"] if rot == 1 else cfg["start_time_2"]
         c = cfg["capacity_1"]   if rot == 1 else cfg["capacity_2"]
         if t is None or not c:
             continue
+        times[rot] = t
         inv = inventory.get((d.isoformat(), rot), {"booked": 0})
-        if c - inv["booked"] > 0:
+        remaining = max(0, c - inv["booked"])
+        rems[rot] = remaining
+        if remaining > 0:
             available_times.append(f"{t}-")
             cell["bookable_rotations"].append(rot)
 
@@ -87,7 +92,12 @@ def _customer_cell(d: date, cfg: dict, inventory: dict,
         cell.update(kind="full", display="☓")
         return cell
 
-    cell.update(kind="available", display=" / ".join(available_times))
+    cell.update(
+        kind="available",
+        display=" / ".join(available_times),
+        rem_1=rems[1], rem_2=rems[2],
+        time_1=times[1], time_2=times[2],
+    )
     return cell
 
 

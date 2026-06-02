@@ -46,9 +46,10 @@
     {% endif %}
 
     <label><span class="t" data-ja="人数" data-en="No. of Guests">人数</span></label>
-    <select id="num-people-select" name="num_people">
+    <select id="num-people-select" name="num_people" required>
       {% for i in range(1, remaining + 1) %}
-      <option value="{{ i }}" data-num="{{ i }}">{{ i }}名</option>
+      <option value="{{ i }}" data-num="{{ i }}"
+              {{ 'selected' if preset_num and i == preset_num }}>{{ i }}名</option>
       {% endfor %}
     </select>
 
