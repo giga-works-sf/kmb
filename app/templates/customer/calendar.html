@@ -185,8 +185,8 @@
     window.location.href = '/kmb/book/' + date + '?num_people=' + count;
   }
 
-  sel.addEventListener('change', function () {
-    count = parseInt(this.value) || 0;
+  function applyCount(n) {
+    count = n;
     if (count) {
       note.textContent = count + '名で予約できる日を選んでください';
       note.style.color = '#2e7d32';
@@ -195,10 +195,14 @@
       note.style.color = '#e65100';
     }
     updateCells();
+  }
+
+  sel.addEventListener('change', function () {
+    applyCount(parseInt(this.value) || 0);
   });
 
-  // 初期状態: クリック無効
-  updateCells();
+  // 初期状態: ブラウザがリロード時にセレクト値を復元している場合も反映
+  applyCount(parseInt(sel.value) || 0);
 })();
 </script>
 {% endblock %}
