@@ -9,7 +9,6 @@ dependencies = [
     "python-multipart>=0.0.12",
     "python-dateutil>=2.9",
     "python-dotenv>=1.0",
-    "httpx>=0.28.1",
     "twilio>=9.0",
 ]
 

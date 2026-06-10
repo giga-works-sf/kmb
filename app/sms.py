@@ -8,8 +8,6 @@ Dev mode (TWILIO_ACCOUNT_SID unset):
 from __future__ import annotations
 import random
 import re
-import sys  # noqa: F401 — kept for compatibility
-
 import logging
 from app.config import TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID
 
