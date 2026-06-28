@@ -52,6 +52,42 @@ def send_verification(reservation: dict, effective_cfg: dict, token: str) -> Non
     _dispatch(msg, reservation["id"])
 
 
+def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
+    """SMS認証完了後、予約情報をお知らせするメール（URL・トークンなし）。"""
+    course = effective_cfg.get("course")
+    rotation = reservation["rotation"]
+    start_time = (effective_cfg["start_time_1"] if rotation == 1
+                  else effective_cfg["start_time_2"])
+
+    weekday = _WEEKDAY_NAMES[_date_cls.fromisoformat(reservation["date"]).weekday()]
+    date_str = f"{reservation['date']}（{weekday}）"
+
+    body = (
+        f"【ご予約確定】{SHOP_NAME}\n\n"
+        f"{reservation['name']} 様\n\n"
+        f"SMS認証が完了し、ご予約が確定いたしました。\n\n"
+        f"──── ご予約内容 ────\n"
+        f"日付　　: {date_str}\n"
+        f"開始時間: {start_time}\n"
+        f"人数　　: {reservation['num_people']}名\n"
+        f"代表者名: {reservation['name']} 様\n"
+        f"電話番号: {format_phone_display(reservation['phone'])}\n"
+    )
+    if reservation.get("note"):
+        body += f"備考　　: {reservation['note']}\n"
+    if course:
+        body += f"\n【コース内容】\n{course}\n"
+    body += f"\n{SHOP_NAME}\n"
+
+    msg = EmailMessage()
+    msg["Subject"] = f"【ご予約確定】{date_str} {start_time}〜 {SHOP_NAME}"
+    msg["From"]    = MAIL_FROM or "noreply@example.com"
+    msg["To"]      = reservation["email"]
+    msg.set_content(body)
+
+    _dispatch(msg, reservation["id"])
+
+
 def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict | None) -> None:
     """Send booking confirmation email to customer after survey completion."""
     course = effective_cfg.get("course")

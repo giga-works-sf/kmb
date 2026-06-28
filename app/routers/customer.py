@@ -211,7 +211,7 @@ async def verify_sms_form(request: Request, rid: int, error: Optional[str] = Non
 
 
 @router.post("/verify-sms/{rid}", response_class=HTMLResponse)
-async def verify_sms_submit(request: Request, rid: int):
+async def verify_sms_submit(request: Request, rid: int, background_tasks: BackgroundTasks):
     form = await request.form()
     code = (form.get("code") or "").strip()
     res = models.get_reservation(rid)
@@ -232,6 +232,11 @@ async def verify_sms_submit(request: Request, rid: int):
                     rid=rid, masked_phone=sms.mask_phone(res["phone"]),
                     error="有効期限が切れています。「コードを再送」してください。",
                     expired=True, resent=False)
+
+    # SMS認証完了 → 予約情報メールをバックグラウンドで送信
+    all_defaults = models.get_all_defaults()
+    cfg = models.get_effective_config(activated["date"], all_defaults)
+    background_tasks.add_task(mailer.send_reservation_info, activated, cfg)
 
     return RedirectResponse(f"/kmb/survey/{activated['id']}", status_code=303)
 
