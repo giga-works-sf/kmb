@@ -20,8 +20,11 @@ SHOP_NAME        = os.getenv("SHOP_NAME", "KanpAI")
 APP_BASE_URL     = os.getenv("APP_BASE_URL", "http://localhost:8000")
 
 # Twilio SMS 認証 (.env に記載)
+# API Key (SK.../Secret) 方式: Account SID は別途必要、Auth Tokenは使わない
 TWILIO_ACCOUNT_SID        = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN         = os.getenv("TWILIO_AUTH_TOKEN", "")
+TWILIO_API_KEY_SID        = os.getenv("TWILIO_API_KEY_SID", "")
+TWILIO_API_KEY_SECRET     = os.getenv("TWILIO_API_KEY_SECRET", "")
 TWILIO_VERIFY_SERVICE_SID = os.getenv("TWILIO_VERIFY_SERVICE_SID", "")
 
 # true にするとSMS認証、false（デフォルト）はメール認証

@@ -9,7 +9,9 @@ from __future__ import annotations
 import random
 import re
 import logging
-from app.config import TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID
+from app.config import (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
+                         TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET,
+                         TWILIO_VERIFY_SERVICE_SID)
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,14 @@ else:
     logger.info("Twilio有効: SID=%s... VERIFY_SID=%s...",
                 TWILIO_ACCOUNT_SID[:8],
                 TWILIO_VERIFY_SERVICE_SID[:8] if TWILIO_VERIFY_SERVICE_SID else "未設定")
+
+
+def _make_client():
+    """API Key (SK.../Secret) があればそれを使用、なければ Auth Token を使用。"""
+    from twilio.rest import Client
+    if TWILIO_API_KEY_SID and TWILIO_API_KEY_SECRET:
+        return Client(TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_ACCOUNT_SID)
+    return Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 
 # ── Phone normalization ────────────────────────────────────────────────────────
@@ -91,8 +101,7 @@ def send_otp(phone_e164: str) -> str | None:
         return code
 
     try:
-        from twilio.rest import Client
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        client = _make_client()
         verification = client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID) \
                              .verifications.create(to=phone_e164, channel="sms")
         logger.info("Twilio SMS sent: to=%s status=%s", phone_e164, verification.status)
@@ -114,8 +123,7 @@ def check_otp(phone_e164: str, code: str, dev_code: str | None = None) -> bool:
         return bool(dev_code and code == dev_code)
 
     try:
-        from twilio.rest import Client
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        client = _make_client()
         result = client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID) \
                        .verification_checks.create(to=phone_e164, code=code)
         logger.info("Twilio verify result: to=%s status=%s", phone_e164, result.status)
