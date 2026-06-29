@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app import models, services
+from app import models, services, sms
 from app.auth import require_admin
 from app.config import SHOP_NAME, CALENDAR_START, CALENDAR_END, get_time_slots
 
@@ -72,21 +72,30 @@ async def day_edit(request: Request, target_date: str, msg: Optional[str] = None
     cfg = models.get_effective_config(target_date, all_defaults)
     reservations = models.list_reservations_for_date(target_date)
     surveys  = models.get_surveys_for_date(target_date)
+    reminders = models.get_reminders_for_date(target_date)
     weekday_name = _WEEKDAY_NAMES[date.fromisoformat(target_date).weekday()]
     is_past = date.fromisoformat(target_date) < date.today()
     # 回転ごとの残席数（手動入力フォームの上限に使用）
     inventory = models.get_inventory_bulk([target_date])
     remaining = {}
+    default_bodies = {}
     for rot in (1, 2):
         t = cfg["start_time_1"] if rot == 1 else cfg["start_time_2"]
         c = cfg["capacity_1"]   if rot == 1 else cfg["capacity_2"]
         if t and c:
             booked = inventory.get((target_date, rot), {"booked": 0})["booked"]
             remaining[rot] = max(0, c - booked)
+            default_bodies[rot] = (
+                f"{{name}} 様\n\n【ご予約リマインド】\n"
+                f"{target_date}（{weekday_name}） {t}〜 のご予約をお待ちしております。\n\n"
+                f"{SHOP_NAME}"
+            )
     return _tpl("admin/day_edit.html", request,
                 target_date=target_date, weekday_name=weekday_name,
                 dc=dc, cfg=cfg, is_past=is_past,
                 reservations=reservations, surveys=surveys,
+                reminders=reminders, default_bodies=default_bodies,
+                sms_reminder_max=models.SMS_REMINDER_MAX,
                 remaining=remaining,
                 slots=_SLOTS, msg=msg, error=None)
 
@@ -268,6 +277,67 @@ async def reservation_move(request: Request, rid: int):
             f"/kmb/admin/day/{form['back_date']}?msg={err}", status_code=303
         )
     return RedirectResponse(f"/kmb/admin/day/{form['new_date']}", status_code=303)
+
+
+# ── SMSリマインド ──────────────────────────────────────────────────────────────
+
+@router.post("/day/{target_date}/rotation/{rot_num}/remind-sms", response_class=HTMLResponse)
+async def remind_sms_send(request: Request, target_date: str, rot_num: int):
+    """その日・その回転のactive予約者全員にリマインドSMSを一括送信。
+    {name} は各予約者の代表者名に置換される。予約1件あたり最大3回まで。"""
+    form = await request.form()
+    body_template = form.get("body") or ""
+
+    reservations = models.list_reservations_for_date(target_date)
+    targets = [
+        r for r in reservations
+        if r["status"] == "active" and r["rotation"] == rot_num and (r.get("phone") or "").strip()
+    ]
+
+    sent = skipped_limit = failed = 0
+    for res in targets:
+        if models.count_sms_reminders(res["id"]) >= models.SMS_REMINDER_MAX:
+            skipped_limit += 1
+            continue
+        body = body_template.replace("{name}", res["name"])
+        sid, err = sms.send_reminder_sms(res["phone"], body)
+        status = "sent" if sid else "failed"
+        models.log_sms_reminder(res["id"], sid, status, body)
+        if sid:
+            sent += 1
+        else:
+            failed += 1
+            logger.error("Reminder SMS failed: rid=%s err=%s", res["id"], err)
+
+    msg = f"リマインドSMSを{sent}件送信しました。"
+    if skipped_limit:
+        msg += f"（送信上限{models.SMS_REMINDER_MAX}回に達した{skipped_limit}件はスキップ）"
+    if failed:
+        msg += f"（{failed}件送信失敗）"
+    return RedirectResponse(
+        f"/kmb/admin/day/{target_date}?msg={msg}", status_code=303
+    )
+
+
+@router.post("/day/{target_date}/remind-sms/refresh", response_class=HTMLResponse)
+async def remind_sms_refresh(request: Request, target_date: str):
+    """その日に送信したリマインドSMSの配信ステータスをTwilioに問い合わせて更新。"""
+    reminders = models.get_reminders_for_date(target_date)
+    updated = 0
+    for items in reminders.values():
+        for item in items:
+            if not item.get("message_sid"):
+                continue
+            if item.get("status") in ("delivered", "undelivered", "failed"):
+                continue
+            new_status = sms.fetch_message_status(item["message_sid"])
+            if new_status and new_status != item.get("status"):
+                models.update_reminder_status(item["id"], new_status)
+                updated += 1
+    return RedirectResponse(
+        f"/kmb/admin/day/{target_date}?msg=ステータスを更新しました（{updated}件）",
+        status_code=303,
+    )
 
 
 # ── Settings ──────────────────────────────────────────────────────────────────

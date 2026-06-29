@@ -511,6 +511,55 @@ def get_surveys_for_date(date_str: str) -> dict[int, dict]:
     return {r["reservation_id"]: dict(r) for r in rows}
 
 
+# ── SMSリマインド ─────────────────────────────────────────────────────────────
+
+SMS_REMINDER_MAX = 3
+
+
+def count_sms_reminders(reservation_id: int) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM sms_reminder WHERE reservation_id=?", (reservation_id,)
+        ).fetchone()[0]
+
+
+def log_sms_reminder(reservation_id: int, message_sid: Optional[str],
+                      status: Optional[str], body: str) -> int:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO sms_reminder (reservation_id, sent_at, message_sid, status, body) "
+            "VALUES (?,?,?,?,?)",
+            (reservation_id, now(), message_sid, status, body),
+        )
+        conn.commit()
+        return cur.lastrowid
+
+
+def get_reminders_for_date(date_str: str) -> dict[int, list[dict]]:
+    """Returns {reservation_id: [reminder dicts (oldest first)]} for a given date."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT sr.* FROM sms_reminder sr
+               JOIN reservation r ON sr.reservation_id = r.id
+               WHERE r.date = ?
+               ORDER BY sr.sent_at""",
+            (date_str,),
+        ).fetchall()
+    result: dict[int, list[dict]] = {}
+    for row in rows:
+        d = dict(row)
+        result.setdefault(d["reservation_id"], []).append(d)
+    return result
+
+
+def update_reminder_status(reminder_id: int, status: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE sms_reminder SET status=? WHERE id=?", (status, reminder_id)
+        )
+        conn.commit()
+
+
 RATE_LIMIT_EXCLUDE = {"27.84.160.69"}
 RATE_LIMIT_PER_DAY = 5
 
