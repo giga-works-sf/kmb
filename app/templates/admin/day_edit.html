@@ -8,11 +8,6 @@
 {% if msg %}<div class="msg-ok">{{ msg }}</div>{% endif %}
 {% if error %}<div class="msg-err">{{ error }}</div>{% endif %}
 
-{% if reminders is defined and reminders %}
-<form method="post" action="/kmb/admin/day/{{ target_date }}/remind-sms/refresh" style="margin-bottom:16px">
-  <button class="btn btn-sm" type="submit">🔄 SMS送信ステータスを更新</button>
-</form>
-{% endif %}
 
 {# ── マクロ: 削除・日付変更フォーム（active/pending共通） ── #}
 {% macro action_forms(res) %}
@@ -86,17 +81,22 @@
 {% if rot_active %}
 <details style="margin-bottom:14px">
   <summary style="cursor:pointer;font-size:0.85rem;color:#1a73e8">
-    📱 この回転の予約者全員（{{ rot_active | length }}名）にリマインドSMSを送信
+    ✉ この回転の予約者全員（{{ rot_active | length }}名）にリマインドメールを送信
   </summary>
   <form method="post" action="/kmb/admin/day/{{ target_date }}/rotation/{{ rot_num }}/remind-sms"
-        onsubmit="return confirm('{{ rot_active | length }}名にリマインドSMSを送信します。よろしいですか？')"
+        onsubmit="return confirm('{{ rot_active | length }}名にリマインドメールを送信します。よろしいですか？')"
         style="margin-top:8px;max-width:520px">
+    <label style="margin-top:0;font-size:0.78rem">件名</label>
+    <input type="text" name="subject"
+           value="{{ default_subject if default_subject is defined else '【ご予約リマインド】' }}"
+           style="width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;margin-top:2px">
+    <label style="margin-top:8px;font-size:0.78rem">本文</label>
     <textarea name="body" rows="6"
               style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:4px;
-                     font-family:inherit;font-size:0.85rem;resize:vertical">{{ default_bodies.get(rot_num, '') if default_bodies is defined else '' }}</textarea>
+                     font-family:inherit;font-size:0.85rem;resize:vertical;margin-top:2px">{{ default_bodies.get(rot_num, '') if default_bodies is defined else '' }}</textarea>
     <p style="font-size:0.75rem;color:#888;margin-top:4px">
       ※ {{ '{name}' }} の部分は送信時に各予約者の代表者名へ自動置換されます。<br>
-      ※ 電話番号未登録の予約者は自動的に除外されます。1件につき最大{{ sms_reminder_max if sms_reminder_max is defined else 3 }}回まで送信できます。
+      ※ メールアドレス未登録の予約者は自動的に除外されます。1件につき最大{{ sms_reminder_max if sms_reminder_max is defined else 3 }}回まで送信できます。
     </p>
     <button class="btn btn-sm" type="submit"
             style="margin-top:6px;background:#1a73e8;color:#fff;border:none">送信</button>
@@ -127,9 +127,9 @@
   {% set rmds = reminders.get(res.id, []) if reminders is defined else [] %}
   {% if rmds %}
   <div style="font-size:0.75rem;color:#888;margin-top:6px">
-    📱 送信履歴:
+    ✉ 送信履歴:
     {% for r in rmds %}
-      {{ r.sent_at[5:16] }}（{{ {'sent':'送信済','delivered':'配信済','undelivered':'不達','failed':'失敗'}.get(r.status, r.status or '未確認') }}）{% if not loop.last %} / {% endif %}
+      {{ r.sent_at[5:16] }}（{{ {'sent':'送信済','failed':'失敗'}.get(r.status, r.status or '不明') }}）{% if not loop.last %} / {% endif %}
     {% endfor %}
   </div>
   {% endif %}

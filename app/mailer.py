@@ -178,19 +178,31 @@ def send_admin_notification(reservation: dict, effective_cfg: dict) -> None:
     _dispatch(msg, reservation["id"])
 
 
-def _dispatch(msg: EmailMessage, rid: int) -> None:
-    """Send or save to outbox."""
+def send_reminder_email(reservation: dict, subject: str, body: str) -> bool:
+    """カスタム件名・本文のリマインドメールを送信。戻り値: 送信成功したか。"""
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"]    = MAIL_FROM or "noreply@example.com"
+    msg["To"]      = reservation["email"]
+    msg.set_content(body)
+    return _dispatch(msg, reservation["id"])
+
+
+def _dispatch(msg: EmailMessage, rid: int) -> bool:
+    """Send or save to outbox. Returns True if actually sent via SMTP."""
     if not MAIL_RELAY_HOST:
         _save_to_outbox(msg, rid)
-        return
+        return False
     try:
         with smtplib.SMTP(MAIL_RELAY_HOST, MAIL_RELAY_PORT) as s:
             s.starttls()
             s.send_message(msg)
         logger.info("Mail sent to %s (rid=%s)", msg["To"], rid)
+        return True
     except Exception as exc:
         logger.error("SMTP error (rid=%s): %s", rid, exc)
         _save_to_outbox(msg, rid)
+        return False
 
 
 def _save_to_outbox(msg: EmailMessage, rid: int) -> None:
