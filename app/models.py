@@ -9,23 +9,42 @@ from app.db import get_conn, now
 # ── Defaults ──────────────────────────────────────────────────────────────────
 
 def get_all_defaults() -> dict:
-    """Returns {"course": str|None, "weekday": {0: {...}, ..., 6: {...}}}"""
+    """Returns {"course": str|None, "course1_name": ..., "weekday": {0: {...}, ..., 6: {...}}}"""
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM defaults WHERE id=1").fetchone()
         wd_rows = conn.execute(
             "SELECT * FROM weekday_defaults ORDER BY weekday"
         ).fetchall()
+    d = dict(row) if row else {}
     return {
-        "course": dict(row)["course"] if row else None,
+        "course":        d.get("course"),
+        "course1_name":  d.get("course1_name"),
+        "course1_price": d.get("course1_price"),
+        "course2_name":  d.get("course2_name"),
+        "course2_price": d.get("course2_price"),
+        "course3_name":  d.get("course3_name"),
+        "course3_price": d.get("course3_price"),
         "weekday": {r["weekday"]: dict(r) for r in wd_rows},
     }
 
 
-def save_defaults(course: Optional[str]) -> None:
+def save_defaults(
+    course1_name: Optional[str] = None, course1_price: Optional[str] = None,
+    course2_name: Optional[str] = None, course2_price: Optional[str] = None,
+    course3_name: Optional[str] = None, course3_price: Optional[str] = None,
+) -> None:
     with get_conn() as conn:
         conn.execute(
-            "UPDATE defaults SET course=?, updated_at=? WHERE id=1",
-            (course or None, now()),
+            """UPDATE defaults SET
+                 course1_name=?, course1_price=?,
+                 course2_name=?, course2_price=?,
+                 course3_name=?, course3_price=?,
+                 updated_at=?
+               WHERE id=1""",
+            (course1_name or None, course1_price or None,
+             course2_name or None, course2_price or None,
+             course3_name or None, course3_price or None,
+             now()),
         )
         conn.commit()
 
@@ -115,9 +134,19 @@ def get_effective_config(date_str: str, all_defaults: dict,
 
     dc = day_configs.get(date_str) if day_configs is not None else get_day_config(date_str)
 
+    _course_fields = {
+        "course1_name":  all_defaults.get("course1_name"),
+        "course1_price": all_defaults.get("course1_price"),
+        "course2_name":  all_defaults.get("course2_name"),
+        "course2_price": all_defaults.get("course2_price"),
+        "course3_name":  all_defaults.get("course3_name"),
+        "course3_price": all_defaults.get("course3_price"),
+    }
+
     if dc is None:
         return {
             "course":        all_defaults["course"],
+            **_course_fields,
             "start_time_1":  wd.get("start_time_1"),
             "capacity_1":    wd.get("capacity_1"),
             "start_time_2":  wd.get("start_time_2"),
@@ -131,6 +160,7 @@ def get_effective_config(date_str: str, all_defaults: dict,
 
     return {
         "course":        _pick(dc.get("course"),       all_defaults["course"]),
+        **_course_fields,
         "start_time_1":  _pick(dc.get("start_time_1"), wd.get("start_time_1")),
         "capacity_1":    _pick(dc.get("capacity_1"),   wd.get("capacity_1")),
         "start_time_2":  _pick(dc.get("start_time_2"), wd.get("start_time_2")),
@@ -194,6 +224,7 @@ def _weekday_cap(conn, date_str: str, rotation: int, dc: Optional[dict]) -> int:
 def create_reservation(
     date: str, rotation: int, name: str, num_people: int,
     phone: str, email: str, note: Optional[str],
+    course_name: Optional[str] = None, course_price: Optional[str] = None,
 ) -> Optional[int]:
     """Insert reservation (pending_verify) inside a transaction with re-check.
     Returns reservation id or None if capacity exceeded.
@@ -221,9 +252,11 @@ def create_reservation(
         cur = conn.execute(
             "INSERT INTO reservation "
             "(date,rotation,name,num_people,phone,email,note,"
+            "course_name,course_price,"
             "status,created_at,updated_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             (date, rotation, name, num_people, phone, email, note or None,
+             course_name or None, course_price or None,
              "pending_verify", ts, ts),
         )
         rid = cur.lastrowid
@@ -350,6 +383,7 @@ def list_reservations_for_date(date: str) -> list[dict]:
 def admin_create_reservation(
     date: str, rotation: int, name: str, num_people: int,
     phone: str, email: str, note: Optional[str],
+    course_name: Optional[str] = None, course_price: Optional[str] = None,
 ) -> Optional[int]:
     """Admin manually creates a reservation directly as 'active' (phone-received).
     Returns reservation id, or None if capacity exceeded."""
@@ -375,10 +409,12 @@ def admin_create_reservation(
         cur = conn.execute(
             "INSERT INTO reservation "
             "(date,rotation,name,num_people,phone,email,note,"
+            "course_name,course_price,"
             "status,confirmed,created_at,updated_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (date, rotation, name, num_people, phone, email or "",
-             note or None, "active", 0, ts, ts),
+             note or None, course_name or None, course_price or None,
+             "active", 0, ts, ts),
         )
         rid = cur.lastrowid
         conn.commit()

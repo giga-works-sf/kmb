@@ -195,6 +195,7 @@ async def admin_add_reservation(request: Request, target_date: str):
     phone = (form.get("phone") or "").strip()
     email = (form.get("email") or "").strip()
     note  = (form.get("note")  or "").strip() or None
+    course_choice = (form.get("course_choice") or "").strip()
 
     errors = []
     if not name:
@@ -213,9 +214,17 @@ async def admin_add_reservation(request: Request, target_date: str):
     except ValueError:
         rotation = 1
 
+    course_name = course_price = None
+    if course_choice in ("1", "2", "3"):
+        all_defaults = models.get_all_defaults()
+        cfg = models.get_effective_config(target_date, all_defaults)
+        course_name  = cfg.get(f"course{course_choice}_name")
+        course_price = cfg.get(f"course{course_choice}_price")
+
     if not errors:
         rid = models.admin_create_reservation(
-            target_date, rotation, name, num_people, phone, email, note
+            target_date, rotation, name, num_people, phone, email, note,
+            course_name, course_price,
         )
         if rid is None:
             errors.append("席数が不足しています")
@@ -291,7 +300,12 @@ async def settings_calendar(request: Request, year: int, month: int,
 @router.post("/settings", response_class=HTMLResponse)
 async def settings_post(request: Request):
     form = await request.form()
-    course = (form.get("course") or "").strip() or None
+    course1_name  = (form.get("course1_name")  or "").strip() or None
+    course1_price = (form.get("course1_price") or "").strip() or None
+    course2_name  = (form.get("course2_name")  or "").strip() or None
+    course2_price = (form.get("course2_price") or "").strip() or None
+    course3_name  = (form.get("course3_name")  or "").strip() or None
+    course3_price = (form.get("course3_price") or "").strip() or None
 
     weekday_settings = []
     for wd in range(7):
@@ -308,7 +322,11 @@ async def settings_post(request: Request):
 
     old_all_defaults = models.get_all_defaults()
     protected = services.apply_default_propagation(old_all_defaults)
-    models.save_defaults(course)
+    models.save_defaults(
+        course1_name, course1_price,
+        course2_name, course2_price,
+        course3_name, course3_price,
+    )
     models.save_weekday_defaults(weekday_settings)
 
     today = date.today()

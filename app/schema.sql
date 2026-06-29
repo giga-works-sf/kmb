@@ -1,7 +1,13 @@
 CREATE TABLE IF NOT EXISTS defaults (
-    id         INTEGER PRIMARY KEY DEFAULT 1,
-    course     TEXT,
-    updated_at TEXT NOT NULL
+    id            INTEGER PRIMARY KEY DEFAULT 1,
+    course        TEXT,
+    course1_name  TEXT,
+    course1_price TEXT,
+    course2_name  TEXT,
+    course2_price TEXT,
+    course3_name  TEXT,
+    course3_price TEXT,
+    updated_at    TEXT NOT NULL
 );
 
 -- 曜日ごとのデフォルト設定 (0=月, 1=火, ..., 6=日)
@@ -36,6 +42,8 @@ CREATE TABLE IF NOT EXISTS reservation (
     phone       TEXT NOT NULL,
     email       TEXT NOT NULL,
     note        TEXT,
+    course_name  TEXT,
+    course_price TEXT,
     confirmed   INTEGER NOT NULL DEFAULT 0,
     status      TEXT NOT NULL DEFAULT 'pending_verify'
                 CHECK (status IN ('active', 'cancelled', 'pending_verify')),

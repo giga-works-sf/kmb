@@ -92,6 +92,7 @@ async def booking_form(request: Request, target_date: str,
                 rotations=rotations, selected_rotation=rotation,
                 remaining=sel["remaining"],
                 preset_num=preset_num,
+                courses=_available_courses(cfg),
                 error=None)
 
 
@@ -107,6 +108,7 @@ async def booking_submit(
     phone: str          = Form(...),
     email: str          = Form(...),
     note: str           = Form(""),
+    course_choice: str  = Form(""),
 ):
     today = date.today()
     earliest, latest = services.get_booking_window(today)
@@ -133,6 +135,15 @@ async def booking_submit(
     all_defaults = models.get_all_defaults()
     cfg = models.get_effective_config(target_date, all_defaults)
 
+    available_courses = _available_courses(cfg)
+    course_name = course_price = None
+    if available_courses:
+        if course_choice not in ("1", "2", "3") or not cfg.get(f"course{course_choice}_name"):
+            errors.append("コースを選択してください")
+        else:
+            course_name  = cfg.get(f"course{course_choice}_name")
+            course_price = cfg.get(f"course{course_choice}_price")
+
     if errors:
         rotations = _available_rotations(target_date, cfg)
         sel = next((r for r in rotations if r["rotation"] == rotation),
@@ -142,6 +153,7 @@ async def booking_submit(
                     target_date=target_date, weekday_name=weekday_name, cfg=cfg,
                     rotations=rotations, selected_rotation=rotation,
                     remaining=sel["remaining"] if sel else 0,
+                    courses=available_courses,
                     error=" / ".join(errors))
 
     # IP ベースのレート制限
@@ -156,6 +168,7 @@ async def booking_submit(
                     target_date=target_date, weekday_name=weekday_name, cfg=cfg,
                     rotations=rotations, selected_rotation=rotation,
                     remaining=sel["remaining"] if sel else 0,
+                    courses=available_courses,
                     error="1日の予約リクエスト上限（5回）に達しました。お電話にてお問い合わせください。")
 
     phone_e164 = sms.to_e164(phone_country, phone)
@@ -163,6 +176,7 @@ async def booking_submit(
     rid = models.create_reservation(
         target_date, rotation, name.strip(), num_people,
         phone_e164, email.strip(), note.strip() or None,
+        course_name, course_price,
     )
 
     if rid is None:
@@ -174,6 +188,7 @@ async def booking_submit(
                     target_date=target_date, weekday_name=weekday_name, cfg=cfg,
                     rotations=rotations, selected_rotation=rotation,
                     remaining=sel["remaining"] if sel else 0,
+                    courses=available_courses,
                     error="申し訳ありません、ご希望の人数分の空席がなくなりました。")
 
     res = models.get_reservation(rid)
@@ -373,6 +388,15 @@ async def verify_email(request: Request, token: str):
     if res is None:
         return _tpl("customer/verify_error.html", request)
     return RedirectResponse(f"/kmb/survey/{res['id']}", status_code=303)
+
+
+def _available_courses(cfg: dict) -> list[dict]:
+    courses = []
+    for i in (1, 2, 3):
+        cname = cfg.get(f"course{i}_name")
+        if cname:
+            courses.append({"choice": i, "name": cname, "price": cfg.get(f"course{i}_price")})
+    return courses
 
 
 def _available_rotations(target_date: str, cfg: dict) -> list[dict]:

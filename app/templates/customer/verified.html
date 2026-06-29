@@ -25,10 +25,12 @@
         <td>{{ res.note }}</td></tr>
     {% endif %}
   </table>
-  {% if cfg.course %}
+  {% if res.course_name %}
   <div style="margin-top:14px;padding:10px;background:#f9f9f9;border-radius:6px;">
     <strong style="font-size:0.85rem">【コース内容】</strong>
-    <p style="font-size:0.82rem;margin-top:6px;white-space:pre-wrap">{{ cfg.course }}</p>
+    <p style="font-size:0.82rem;margin-top:6px">
+      {{ res.course_name }}{% if res.course_price %}　{{ res.course_price }}{% endif %}
+    </p>
   </div>
   {% endif %}
 </div>

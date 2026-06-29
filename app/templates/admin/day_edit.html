@@ -92,6 +92,7 @@
   <div style="font-size:0.82rem;color:#666;margin-top:6px;line-height:1.9">
     📞 {{ res.phone | format_phone }}<br>
     ✉ {{ res.email }}
+    {% if res.course_name %}<br>🍽 {{ res.course_name }}{% if res.course_price %}（{{ res.course_price }}）{% endif %}{% endif %}
     {% if res.note %}<br>備考: {{ res.note }}{% endif %}
   </div>
   {# ── アンケート結果 ── #}
@@ -143,6 +144,7 @@
   <div style="font-size:0.82rem;color:#666;margin-top:6px;line-height:1.9">
     📞 {{ res.phone | format_phone }}<br>
     ✉ {{ res.email }}
+    {% if res.course_name %}<br>🍽 {{ res.course_name }}{% if res.course_price %}（{{ res.course_price }}）{% endif %}{% endif %}
     {% if res.note %}<br>備考: {{ res.note }}{% endif %}
   </div>
   {% if res.verification_token %}
@@ -211,6 +213,24 @@
 
     <label>メールアドレス（任意）</label>
     <input type="email" name="email" placeholder="example@email.com" style="margin-top:4px">
+
+    {% set manual_courses = [] %}
+    {% for i in [1, 2, 3] %}
+      {% if cfg.get('course' ~ i ~ '_name') %}
+        {% set _ = manual_courses.append(i) %}
+      {% endif %}
+    {% endfor %}
+    {% if manual_courses %}
+    <label>コース（任意）</label>
+    <select name="course_choice" style="margin-top:4px">
+      <option value="">— コースなし —</option>
+      {% for i in manual_courses %}
+      <option value="{{ i }}">
+        {{ cfg.get('course' ~ i ~ '_name') }}{% if cfg.get('course' ~ i ~ '_price') %}（{{ cfg.get('course' ~ i ~ '_price') }}）{% endif %}
+      </option>
+      {% endfor %}
+    </select>
+    {% endif %}
 
     <label>備考（任意）</label>
     <input type="text" name="note" placeholder="アレルギー・その他" style="margin-top:4px">

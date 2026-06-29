@@ -45,6 +45,14 @@ def init_db() -> None:
             "ALTER TABLE reservation RENAME COLUMN email_token TO verification_token",
             "ALTER TABLE survey_response ADD COLUMN payment_method TEXT",
             "ALTER TABLE survey_response ADD COLUMN transfer_name TEXT",
+            "ALTER TABLE defaults ADD COLUMN course1_name TEXT",
+            "ALTER TABLE defaults ADD COLUMN course1_price TEXT",
+            "ALTER TABLE defaults ADD COLUMN course2_name TEXT",
+            "ALTER TABLE defaults ADD COLUMN course2_price TEXT",
+            "ALTER TABLE defaults ADD COLUMN course3_name TEXT",
+            "ALTER TABLE defaults ADD COLUMN course3_price TEXT",
+            "ALTER TABLE reservation ADD COLUMN course_name TEXT",
+            "ALTER TABLE reservation ADD COLUMN course_price TEXT",
         ]:
             try:
                 conn.execute(sql)
@@ -77,6 +85,8 @@ def init_db() -> None:
                     phone       TEXT NOT NULL,
                     email       TEXT NOT NULL,
                     note        TEXT,
+                    course_name  TEXT,
+                    course_price TEXT,
                     confirmed   INTEGER NOT NULL DEFAULT 0,
                     status      TEXT NOT NULL DEFAULT 'pending_verify'
                                 CHECK (status IN ('active', 'cancelled', 'pending_verify')),
@@ -87,6 +97,7 @@ def init_db() -> None:
                 );
                 INSERT INTO reservation
                     SELECT id, date, rotation, name, num_people, phone, email, note,
+                           NULL, NULL,
                            confirmed, status, verification_token, token_expires_at,
                            created_at, updated_at
                     FROM _reservation_old;

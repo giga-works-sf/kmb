@@ -13,12 +13,22 @@ _WEEKDAY_NAMES = ["月", "火", "水", "木", "金", "土", "日"]
 logger = logging.getLogger(__name__)
 
 
+def _course_line(reservation: dict) -> str:
+    name = reservation.get("course_name")
+    if not name:
+        return ""
+    price = reservation.get("course_price")
+    text = f"\n【コース内容】\n{name}"
+    if price:
+        text += f"　{price}"
+    return text + "\n"
+
+
 def send_verification(reservation: dict, effective_cfg: dict, token: str) -> None:
     """Send email verification link. Errors are printed to stderr, never raised."""
     from app.config import APP_BASE_URL
     verify_url = f"{APP_BASE_URL}/kmb/verify/{token}"
 
-    course = effective_cfg.get("course")
     rotation = reservation["rotation"]
     start_time = (effective_cfg["start_time_1"] if rotation == 1
                   else effective_cfg["start_time_2"])
@@ -39,8 +49,7 @@ def send_verification(reservation: dict, effective_cfg: dict, token: str) -> Non
     )
     if reservation.get("note"):
         body += f"備考　　: {reservation['note']}\n"
-    if course:
-        body += f"\n【コース内容】\n{course}\n"
+    body += _course_line(reservation)
     body += f"\n{SHOP_NAME}\n"
 
     msg = EmailMessage()
@@ -54,7 +63,6 @@ def send_verification(reservation: dict, effective_cfg: dict, token: str) -> Non
 
 def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
     """SMS認証完了後、予約情報をお知らせするメール（URL・トークンなし）。"""
-    course = effective_cfg.get("course")
     rotation = reservation["rotation"]
     start_time = (effective_cfg["start_time_1"] if rotation == 1
                   else effective_cfg["start_time_2"])
@@ -74,8 +82,7 @@ def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
     )
     if reservation.get("note"):
         body += f"備考　　: {reservation['note']}\n"
-    if course:
-        body += f"\n【コース内容】\n{course}\n"
+    body += _course_line(reservation)
 
     msg = EmailMessage()
     msg["Subject"] = f"【ご予約確定】{date_str} {start_time}〜 {SHOP_NAME}"
@@ -88,7 +95,6 @@ def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
 
 def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict | None) -> None:
     """Send booking confirmation email to customer after survey completion."""
-    course = effective_cfg.get("course")
     rotation = reservation["rotation"]
     start_time = (effective_cfg["start_time_1"] if rotation == 1
                   else effective_cfg["start_time_2"])
@@ -121,8 +127,7 @@ def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict 
     )
     if payment_line:
         body += payment_line
-    if course:
-        body += f"\n【コース内容】\n{course}\n"
+    body += _course_line(reservation)
     body += (
         f"\n──── キャンセルポリシー ────\n"
         f"キャンセル・人数変更は【7日前まで】にお電話にてご連絡ください。\n"
@@ -162,6 +167,7 @@ def send_admin_notification(reservation: dict, effective_cfg: dict) -> None:
     )
     if reservation.get("note"):
         body += f"備考　　: {reservation['note']}\n"
+    body += _course_line(reservation)
     body += f"\n管理画面: {reservation['date']} の予約状況を確認してください。\n"
 
     msg = EmailMessage()

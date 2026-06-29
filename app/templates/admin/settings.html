@@ -9,14 +9,23 @@
 
 <form method="post" action="/kmb/admin/settings">
 
-  {# ── コース（広幅テキストエリア）── #}
-  <div style="display:grid;grid-template-columns:120px 1fr;gap:8px 16px;
-              align-items:start;max-width:800px;margin-bottom:24px">
-    <label style="padding-top:8px;font-weight:600;font-size:0.88rem">コース内容</label>
-    <textarea name="course" rows="4"
-              style="width:100%;padding:8px 10px;border:1px solid #ccc;
-                     border-radius:4px;font-family:inherit;font-size:0.9rem;
-                     resize:vertical">{{ all_defaults.course or '' }}</textarea>
+  {# ── コース（最大3つ・名前＋金額）── #}
+  <div style="max-width:700px;margin-bottom:24px">
+    <label style="font-weight:600;font-size:0.88rem;display:block;margin-bottom:10px">
+      コース内容（最大3つ・お客様が予約時に1つ選択します）
+    </label>
+    {% for i in [1, 2, 3] %}
+    <div style="display:grid;grid-template-columns:1fr 200px;gap:8px;margin-bottom:8px">
+      <input type="text" name="course{{ i }}_name"
+             placeholder="コース{{ i }}名（空欄で未使用）"
+             value="{{ all_defaults.get('course' ~ i ~ '_name') or '' }}"
+             style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:0.9rem">
+      <input type="text" name="course{{ i }}_price"
+             placeholder="金額（例: 8,000円+税）"
+             value="{{ all_defaults.get('course' ~ i ~ '_price') or '' }}"
+             style="padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:0.9rem">
+    </div>
+    {% endfor %}
   </div>
 
   {# ── 曜日別設定テーブル ── #}
