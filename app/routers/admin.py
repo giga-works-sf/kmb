@@ -66,7 +66,8 @@ async def admin_calendar(request: Request, year: int, month: int):
 # ── Day Edit ──────────────────────────────────────────────────────────────────
 
 @router.get("/day/{target_date}", response_class=HTMLResponse)
-async def day_edit(request: Request, target_date: str, msg: Optional[str] = None):
+async def day_edit(request: Request, target_date: str,
+                   msg: Optional[str] = None, err: Optional[str] = None):
     all_defaults = models.get_all_defaults()
     dc  = models.get_day_config(target_date)
     cfg = models.get_effective_config(target_date, all_defaults)
@@ -99,7 +100,7 @@ async def day_edit(request: Request, target_date: str, msg: Optional[str] = None
                 default_subject=default_subject,
                 sms_reminder_max=models.SMS_REMINDER_MAX,
                 remaining=remaining,
-                slots=_SLOTS, msg=msg, error=None)
+                slots=_SLOTS, msg=msg, error=err)
 
 
 @router.post("/day/{target_date}", response_class=HTMLResponse)
@@ -140,16 +141,11 @@ async def day_edit_save(request: Request, target_date: str):
         errors.append(f"{target_date} は予約があるため定休日に設定できません")
 
     if errors:
-        all_defaults = models.get_all_defaults()
-        dc  = models.get_day_config(target_date)
-        cfg = models.get_effective_config(target_date, all_defaults)
-        reservations = models.list_reservations_for_date(target_date)
-        weekday_name = _WEEKDAY_NAMES[date.fromisoformat(target_date).weekday()]
-        return _tpl("admin/day_edit.html", request,
-                    target_date=target_date, weekday_name=weekday_name,
-                    dc=dc, cfg=cfg,
-                    reservations=reservations, slots=_SLOTS,
-                    msg=None, error=" / ".join(errors))
+        from urllib.parse import quote
+        return RedirectResponse(
+            f"/kmb/admin/day/{target_date}?err={quote(' / '.join(errors))}",
+            status_code=303,
+        )
 
     models.upsert_day_config(
         target_date,

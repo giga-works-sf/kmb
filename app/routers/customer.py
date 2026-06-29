@@ -161,7 +161,7 @@ async def booking_submit(
     if not models.check_rate_limit(client_ip):
         logger.warning("Rate limit exceeded: ip=%s", client_ip)
         weekday_name = _WEEKDAY_NAMES[d.weekday()]
-        rotations = _available_rotations(target_date, all_defaults)
+        rotations = _available_rotations(target_date, cfg)
         sel = next((r for r in rotations if r["rotation"] == rotation),
                    rotations[0] if rotations else None)
         return _tpl("customer/booking.html", request,

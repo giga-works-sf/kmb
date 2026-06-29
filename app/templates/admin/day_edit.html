@@ -305,9 +305,9 @@
     <fieldset {% if has_active %}disabled{% endif %}
               style="border:none;padding:0;margin:0">
 
-    <label>コース内容（空欄でデフォルト値を使用）</label>
-    <textarea name="course" rows="3"
-              style="resize:vertical">{{ cfg.course or '' }}</textarea>
+    <p style="font-size:0.8rem;color:#888;margin:0 0 12px">
+      ※ コース内容は<a href="/kmb/admin/settings" style="color:#1a73e8">デフォルト設定</a>で管理します。
+    </p>
 
     <label>開始時間1（1回転目）</label>
     <select name="start_time_1">

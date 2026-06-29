@@ -517,9 +517,11 @@ SMS_REMINDER_MAX = 3
 
 
 def count_sms_reminders(reservation_id: int) -> int:
+    """送信成功（status='sent'）のみをカウント。失敗は上限に含めない。"""
     with get_conn() as conn:
         return conn.execute(
-            "SELECT COUNT(*) FROM sms_reminder WHERE reservation_id=?", (reservation_id,)
+            "SELECT COUNT(*) FROM sms_reminder WHERE reservation_id=? AND status='sent'",
+            (reservation_id,),
         ).fetchone()[0]
 
 

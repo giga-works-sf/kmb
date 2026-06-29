@@ -108,7 +108,7 @@ def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict 
         if pm == "transfer":
             payment_line = f"お支払い方法: 事前振込割　8,800円\n振込人名義　: {survey.get('transfer_name') or ''}\n"
         elif pm == "in_store":
-            payment_line = "お支払い方法: 店頭払い　9,000円（キャッシュレスのみ）\n"
+            payment_line = "お支払い方法: 店頭払い　9,300円（キャッシュレスのみ）\n"
         else:
             payment_line = ""
     else:
@@ -207,7 +207,8 @@ def _dispatch(msg: EmailMessage, rid: int) -> bool:
 
 def _save_to_outbox(msg: EmailMessage, rid: int) -> None:
     OUTBOX_DIR.mkdir(exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # マイクロ秒まで含めて同一秒・同一予約の複数メールの衝突を防ぐ
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     path = OUTBOX_DIR / f"{ts}_{rid}.eml"
     path.write_bytes(bytes(msg))
     logger.info("Mail saved to outbox: %s", path)
