@@ -14,8 +14,7 @@
 {% endif %}
 
 <p style="font-size:0.85rem;color:#888;margin-bottom:20px">
-  ご予約内容の確認とともに、以下のアンケートへのご回答をお願いいたします。<br>
-  すべての項目にお答えください。
+  ご予約内容の確認とともに、以下のアンケートへのご協力をお願いいたします。
 </p>
 
 <script>
@@ -32,8 +31,11 @@ function setTransferWrap(show) {
 <form method="post" action="/kmb/survey/{{ res.id }}" novalidate
       onsubmit="return validateSurvey(event)">
 
-{# ── Q0 お支払い方法 ── #}
 {% set sv = survey %}
+
+<h3 style="font-size:1rem;margin-bottom:14px">確認事項</h3>
+
+{# ── お支払い方法 ── #}
 <fieldset style="border:2px solid #1a73e8;border-radius:6px;padding:16px;margin-bottom:20px">
   <legend style="font-size:0.9rem;font-weight:600;padding:0 8px;color:#1a73e8">
     希望のお支払い方法<span style="color:red">*</span>
@@ -74,10 +76,43 @@ function setTransferWrap(show) {
   <div id="err-payment_method" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </fieldset>
 
-{# ── Q1 来店経緯 ── #}
+{# ── アレルギー ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">アレルギーはございますか？（空欄可）</label>
+  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
+    ※ メニュー決定後の変更はできませんのでご了承ください。
+  </p>
+  <textarea name="allergy" rows="2">{{ (sv.allergy or '') if sv else '' }}</textarea>
+</div>
+
+{# ── 苦手食材 ── #}
+<div style="margin-bottom:20px">
+  <label style="margin-top:0">苦手な食材はございますか？（空欄可）</label>
+  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
+    ※ 100% 使用しないということではありませんが、可能な限り対応させていただきます。
+  </p>
+  <textarea name="disliked_food" rows="2">{{ (sv.disliked_food or '') if sv else '' }}</textarea>
+</div>
+
+{# ── ノンアルカクテル ── #}
+<div style="margin-bottom:24px">
+  <label style="margin-top:0">ノンアルカクテル希望人数</label>
+  <p style="font-size:0.8rem;color:#555;margin:4px 0 4px">
+    アルコールが飲めない方には【オリジナルノンアルカクテル】を数種類ご用意します。<br>
+    希望される場合は人数をご記入ください。<br>
+    <span style="color:#c62828">※ 事前の仕込みが必要ですので、急な対応はできかねます。</span>
+  </p>
+  <input type="number" name="nonalcoholic_count" min="0" value="{{ sv.nonalcoholic_count if sv else 0 }}"
+         style="width:100px">
+  <span style="font-size:0.88rem;color:#666;margin-left:6px">名（0 = 希望なし）</span>
+</div>
+
+<h3 style="font-size:1rem;margin-bottom:14px">アンケート</h3>
+
+{# ── 来店経緯 ── #}
 <fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
   <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
-    どちらで KMB をお知りになりましたか？<span style="color:red">*</span>
+    どちらで当店をお知りになりましたか？<span style="color:red">*</span>
   </legend>
   {% for val, label in [('terujii','てるじい経由'),('ourdays','OURDAYS さん経由'),('yukawa','湯川シェフ経由'),('other','その他')] %}
   <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
@@ -95,10 +130,10 @@ function setTransferWrap(show) {
   <div id="err-source" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </fieldset>
 
-{# ── Q2 来店回数 ── #}
+{# ── 来店回数 ── #}
 <fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
   <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
-    KMB こめむぎぶどう のご利用は何回目ですか？<span style="color:red">*</span>
+    当店のご利用は何回目ですか？<span style="color:red">*</span>
   </legend>
   {% for val, label in [('first','はじめて'),('2nd','２回目'),('3rd_plus','３回目以上')] %}
   <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
@@ -111,7 +146,7 @@ function setTransferWrap(show) {
   <div id="err-visit_count" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </fieldset>
 
-{# ── Q3 会員 ── #}
+{# ── 会員 ── #}
 <fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
   <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
     KMB こめむぎぶどう の会員様ですか？<span style="color:red">*</span>
@@ -127,75 +162,20 @@ function setTransferWrap(show) {
   <div id="err-is_member" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
 </fieldset>
 
-{# ── Q4 情報配信（会員の直後に移動） ── #}
-<fieldset style="border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
-  <legend style="font-size:0.9rem;font-weight:600;padding:0 8px">
-    今後、イベントやお得な情報をご希望されますか？<span style="color:red">*</span>
-  </legend>
-  {% for val, label in [
-      ('none',  '希望しない'),
-      ('email', 'メールを希望する'),
-      ('line',  '「てるじいイベント案内LINE公式グループ」に参加希望'),
-  ] %}
-  <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
-    <input type="radio" name="info_preference" value="{{ val }}" required
-           style="width:auto;margin-top:3px;flex-shrink:0;padding:0"
-           {{ 'checked' if sv and sv.info_preference == val }}>
-    <span>
-      {{ label }}
-      {% if val == 'line' %}
-      <a href="https://lin.ee/uiArYyV" target="_blank"
-         style="font-size:0.78rem;color:#1a73e8;margin-left:4px">https://lin.ee/uiArYyV</a>
-      {% endif %}
-    </span>
-  </label>
-  {% endfor %}
-  <div id="err-info_preference" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
-</fieldset>
-
-{# ── Q5 楽しみ ── #}
+{# ── 選んでいただいた理由 ── #}
 <div style="margin-bottom:20px">
-  <label style="margin-top:0">特に何を楽しみにされていますか？（空欄可）</label>
+  <label style="margin-top:0">当店を選んでいただいた理由は？（未回答可）</label>
   <textarea name="looking_forward" rows="3">{{ (sv.looking_forward or '') if sv else '' }}</textarea>
 </div>
 
-{# ── Q6 アレルギー ── #}
-<div style="margin-bottom:20px">
-  <label style="margin-top:0">アレルギーはございますか？（空欄可）</label>
-  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
-    ※ メニュー決定後の変更はできませんのでご了承ください。
-  </p>
-  <textarea name="allergy" rows="2">{{ (sv.allergy or '') if sv else '' }}</textarea>
-</div>
-
-{# ── Q7 苦手食材 ── #}
-<div style="margin-bottom:20px">
-  <label style="margin-top:0">苦手な食材はございますか？（空欄可）</label>
-  <p style="font-size:0.8rem;color:#c62828;margin:4px 0 4px">
-    ※ 100% 使用しないということではありませんが、可能な限り対応させていただきます。
-  </p>
-  <textarea name="disliked_food" rows="2">{{ (sv.disliked_food or '') if sv else '' }}</textarea>
-</div>
-
-{# ── Q8 ノンアルカクテル ── #}
-<div style="margin-bottom:20px">
-  <label style="margin-top:0">ノンアルカクテル希望人数</label>
-  <p style="font-size:0.8rem;color:#555;margin:4px 0 4px">
-    アルコールが飲めない方には【オリジナルノンアルカクテル】を数種類ご用意します。<br>
-    希望される場合は人数をご記入ください。<br>
-    <span style="color:#c62828">※ 事前の仕込みが必要ですので、急な対応はできかねます。</span>
-  </p>
-  <input type="number" name="nonalcoholic_count" min="0" value="{{ sv.nonalcoholic_count if sv else 0 }}"
-         style="width:100px">
-  <span style="font-size:0.88rem;color:#666;margin-left:6px">名（0 = 希望なし）</span>
-</div>
-
-{# ── Q9 その他 ── #}
+{# ── その他 ── #}
 <div style="margin-bottom:24px">
   <label style="margin-top:0">その他ご質問があればお気軽にどうぞ</label>
   <textarea name="other_questions" rows="3"
             placeholder="何でもどうぞ">{{ (sv.other_questions or '') if sv else '' }}</textarea>
 </div>
+
+<h3 style="font-size:1rem;margin-bottom:14px">注意事項</h3>
 
 {# ── 規約同意 ── #}
 <div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:20px">
@@ -249,7 +229,7 @@ function validateSurvey(e) {
   var firstErrId = null;
 
   // ── ラジオボタン必須チェック ──────────────────────────────
-  var radioGroups = ['payment_method', 'source', 'visit_count', 'is_member', 'info_preference'];
+  var radioGroups = ['payment_method', 'source', 'visit_count', 'is_member'];
   for (var i = 0; i < radioGroups.length; i++) {
     var name = radioGroups[i];
     if (form.querySelector('input[name="' + name + '"]:checked')) {

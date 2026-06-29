@@ -63,7 +63,6 @@ def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
     date_str = f"{reservation['date']}（{weekday}）"
 
     body = (
-        f"【ご予約確定】{SHOP_NAME}\n\n"
         f"{reservation['name']} 様\n\n"
         f"SMS認証が完了し、ご予約が確定いたしました。\n\n"
         f"──── ご予約内容 ────\n"
@@ -77,7 +76,6 @@ def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
         body += f"備考　　: {reservation['note']}\n"
     if course:
         body += f"\n【コース内容】\n{course}\n"
-    body += f"\n{SHOP_NAME}\n"
 
     msg = EmailMessage()
     msg["Subject"] = f"【ご予約確定】{date_str} {start_time}〜 {SHOP_NAME}"

@@ -99,7 +99,6 @@
   {% if sv %}
   {% set source_labels  = {'terujii':'てるじい経由','ourdays':'OURDAYS さん経由','yukawa':'湯川シェフ経由','other':'その他'} %}
   {% set visit_labels   = {'first':'はじめて','2nd':'２回目','3rd_plus':'３回目以上'} %}
-  {% set info_labels    = {'none':'希望しない','email':'メール希望','line':'LINE参加希望'} %}
   {% set payment_labels = {'in_store':'店頭払い 9,300円','transfer':'事前振込割 8,800円'} %}
   <div style="margin-top:8px;padding:8px 10px;background:#f9f9f9;border-radius:4px;
               border-left:3px solid #ccc;font-size:0.8rem;color:#555;line-height:1.8">
@@ -108,11 +107,10 @@
     来店経緯: {{ source_labels.get(sv.source, sv.source or '—') }}{% if sv.source == 'other' and sv.source_other %}（{{ sv.source_other }}）{% endif %}<br>
     来店回数: {{ visit_labels.get(sv.visit_count, sv.visit_count or '—') }}<br>
     会員: {{ 'はい' if sv.is_member else 'いいえ' }}<br>
-    {% if sv.looking_forward %}楽しみ: {{ sv.looking_forward }}<br>{% endif %}
+    {% if sv.looking_forward %}選んだ理由: {{ sv.looking_forward }}<br>{% endif %}
     {% if sv.allergy %}アレルギー: {{ sv.allergy }}<br>{% endif %}
     {% if sv.disliked_food %}苦手食材: {{ sv.disliked_food }}<br>{% endif %}
     {% if sv.nonalcoholic_count %}ノンアル希望: {{ sv.nonalcoholic_count }}名<br>{% endif %}
-    情報配信: {{ info_labels.get(sv.info_preference, sv.info_preference or '—') }}<br>
     {% if sv.other_questions %}その他: {{ sv.other_questions }}<br>{% endif %}
   </div>
   {% endif %}
