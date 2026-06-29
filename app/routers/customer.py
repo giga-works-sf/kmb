@@ -282,21 +282,6 @@ async def survey_submit(request: Request, rid: int, background_tasks: Background
     if date.fromisoformat(res["date"]) < date.today():
         return RedirectResponse(f"/kmb/verified/{rid}")
     form = await request.form()
-    payment_method = form.get("payment_method")
-    transfer_name  = (form.get("transfer_name") or "").strip() or None
-
-    # 事前振込を選択した場合は振込人名義が必須
-    if payment_method == "transfer" and not transfer_name:
-        all_defaults = models.get_all_defaults()
-        cfg = models.get_effective_config(res["date"], all_defaults)
-        start_time = cfg["start_time_1"] if res["rotation"] == 1 else cfg["start_time_2"]
-        res_date = date.fromisoformat(res["date"])
-        weekday_name = _WEEKDAY_NAMES[res_date.weekday()]
-        survey = models.get_survey(rid)
-        return _tpl("customer/survey.html", request,
-                    res=res, survey=survey, can_edit=True,
-                    start_time=start_time, weekday_name=weekday_name,
-                    error="事前振込を選択された場合は振込人名義（カタカナ）を入力してください。")
 
     survey_data = {
         "source":             form.get("source"),
@@ -309,8 +294,6 @@ async def survey_submit(request: Request, rid: int, background_tasks: Background
         "nonalcoholic_count": int(form.get("nonalcoholic_count") or 0),
         "info_preference":    form.get("info_preference"),
         "other_questions":    (form.get("other_questions") or "").strip() or None,
-        "payment_method":     payment_method,
-        "transfer_name":      transfer_name,
         "terms_agreed":       1,
     }
     models.save_survey(rid, survey_data)

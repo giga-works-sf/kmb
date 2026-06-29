@@ -102,18 +102,6 @@ def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict 
     weekday = _WEEKDAY_NAMES[_date_cls.fromisoformat(reservation["date"]).weekday()]
     date_str = f"{reservation['date']}（{weekday}）"
 
-    # 支払い方法
-    if survey:
-        pm = survey.get("payment_method")
-        if pm == "transfer":
-            payment_line = f"お支払い方法: 事前振込割　8,800円\n振込人名義　: {survey.get('transfer_name') or ''}\n"
-        elif pm == "in_store":
-            payment_line = "お支払い方法: 店頭払い　9,300円（キャッシュレスのみ）\n"
-        else:
-            payment_line = ""
-    else:
-        payment_line = ""
-
     body = (
         f"【予約確定】{SHOP_NAME}\n\n"
         f"{reservation['name']} 様\n\n"
@@ -125,14 +113,12 @@ def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict 
         f"代表者名: {reservation['name']} 様\n"
         f"電話番号: {format_phone_display(reservation['phone'])}\n"
     )
-    if payment_line:
-        body += payment_line
     body += _course_line(reservation)
     body += (
         f"\n──── キャンセルポリシー ────\n"
         f"キャンセル・人数変更は【7日前まで】にお電話にてご連絡ください。\n"
         f"6〜3日前: 50% ／ 2〜1日前: 80% ／ 当日: 100%\n\n"
-        f"{SHOP_NAME}\n"
+        f"{SHOP_NAME}<komemugibudo@gmail.com>\n"
     )
 
     msg = EmailMessage()

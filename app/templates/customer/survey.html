@@ -17,16 +17,6 @@
   ご予約内容の確認とともに、以下のアンケートへのご協力をお願いいたします。
 </p>
 
-<script>
-function setTransferWrap(show) {
-  var wrap  = document.getElementById('transfer_wrap');
-  var input = document.getElementById('transfer_name_input');
-  wrap.style.display = show ? 'block' : 'none';
-  input.required = show;
-  if (!show) input.value = '';
-}
-</script>
-
 <div class="form-wrap" style="max-width:600px">
 <form method="post" action="/kmb/survey/{{ res.id }}" novalidate
       onsubmit="return validateSurvey(event)">
@@ -34,47 +24,6 @@ function setTransferWrap(show) {
 {% set sv = survey %}
 
 <h3 style="font-size:1rem;margin-bottom:14px">確認事項</h3>
-
-{# ── お支払い方法 ── #}
-<fieldset style="border:2px solid #1a73e8;border-radius:6px;padding:16px;margin-bottom:20px">
-  <legend style="font-size:0.9rem;font-weight:600;padding:0 8px;color:#1a73e8">
-    希望のお支払い方法<span style="color:red">*</span>
-  </legend>
-  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
-    <input type="radio" name="payment_method" value="in_store" required
-           style="width:auto;margin:0;padding:0"
-           {{ 'checked' if sv and sv.payment_method == 'in_store' }}
-           onchange="setTransferWrap(false)">
-    店頭払い　9,300円（キャッシュレスのみ）
-  </label>
-  <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;cursor:pointer">
-    <input type="radio" name="payment_method" value="transfer" required
-           style="width:auto;margin:0;padding:0"
-           {{ 'checked' if sv and sv.payment_method == 'transfer' }}
-           onchange="setTransferWrap(true)">
-    事前振込割　8,800円
-  </label>
-  <div id="transfer_wrap"
-       style="display:{{ 'block' if sv and sv.payment_method == 'transfer' else 'none' }};
-              margin-top:14px;padding:14px;background:#f0f4ff;border-radius:6px">
-    <p style="font-size:0.88rem;font-weight:600;margin-bottom:8px">【振込先】</p>
-    <p style="font-size:0.85rem;line-height:1.9;margin:0">
-      三井住友銀行　福岡支店　店番号 701<br>
-      普通　口座番号 8239815<br>
-      KMB クリエイティブ
-    </p>
-    <label style="margin-top:12px">振込人名義（カタカナ）<span style="color:red">*</span></label>
-    <input type="text" id="transfer_name_input" name="transfer_name" placeholder="ヤマダ タロウ"
-           style="margin-top:4px"
-           {{ 'required' if sv and sv.payment_method == 'transfer' }}
-           value="{{ (sv.transfer_name or '') if sv else '' }}">
-    <p style="font-size:0.8rem;color:#c62828;margin:6px 0 0">
-      ※ 振込人名義を間違えると入金の確認が出来ませんのでご注意下さい。
-    </p>
-    <div id="err-transfer_name" style="display:none;color:#c62828;font-size:0.82rem;margin-top:6px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
-  </div>
-  <div id="err-payment_method" style="display:none;color:#c62828;font-size:0.82rem;margin-top:8px;padding:5px 8px;background:#fdecea;border-radius:4px"></div>
-</fieldset>
 
 {# ── アレルギー ── #}
 <div style="margin-bottom:20px">
@@ -229,7 +178,7 @@ function validateSurvey(e) {
   var firstErrId = null;
 
   // ── ラジオボタン必須チェック ──────────────────────────────
-  var radioGroups = ['payment_method', 'source', 'visit_count', 'is_member'];
+  var radioGroups = ['source', 'visit_count', 'is_member'];
   for (var i = 0; i < radioGroups.length; i++) {
     var name = radioGroups[i];
     if (form.querySelector('input[name="' + name + '"]:checked')) {
@@ -238,25 +187,6 @@ function validateSurvey(e) {
       showErr('err-' + name, '選択して下さい');
       if (!firstErrId) firstErrId = 'err-' + name;
     }
-  }
-
-  // ── 振込人名義チェック ────────────────────────────────────
-  var payChecked = form.querySelector('input[name="payment_method"]:checked');
-  var tNameInput = document.getElementById('transfer_name_input');
-  if (payChecked && payChecked.value === 'transfer') {
-    var tName = (tNameInput ? tNameInput.value : '').trim();
-    var katakana = /^[゠-ヿー\s　]+$/;
-    if (!tName) {
-      showErr('err-transfer_name', '振込人名義を入力して下さい');
-      if (!firstErrId) firstErrId = 'err-transfer_name';
-    } else if (!katakana.test(tName)) {
-      showErr('err-transfer_name', 'カタカナで入力して下さい');
-      if (!firstErrId) firstErrId = 'err-transfer_name';
-    } else {
-      hideErr('err-transfer_name');
-    }
-  } else {
-    hideErr('err-transfer_name');
   }
 
   // ── 同意チェックボックス ──────────────────────────────────

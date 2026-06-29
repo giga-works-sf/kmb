@@ -70,8 +70,6 @@ CREATE TABLE IF NOT EXISTS survey_response (
     info_preference     TEXT,           -- 情報配信: none/email/line/other
     info_other          TEXT,
     other_questions     TEXT,           -- その他質問
-    payment_method      TEXT,           -- 支払方法: in_store/transfer
-    transfer_name       TEXT,           -- 振込人名義（事前振込の場合）
     terms_agreed        INTEGER NOT NULL DEFAULT 0,  -- 規約同意
     created_at          TEXT NOT NULL,
     updated_at          TEXT NOT NULL

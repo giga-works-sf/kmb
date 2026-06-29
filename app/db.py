@@ -43,8 +43,6 @@ def init_db() -> None:
             "ALTER TABLE reservation ADD COLUMN email_token TEXT",
             "ALTER TABLE reservation ADD COLUMN token_expires_at TEXT",
             "ALTER TABLE reservation RENAME COLUMN email_token TO verification_token",
-            "ALTER TABLE survey_response ADD COLUMN payment_method TEXT",
-            "ALTER TABLE survey_response ADD COLUMN transfer_name TEXT",
             "ALTER TABLE defaults ADD COLUMN course1_name TEXT",
             "ALTER TABLE defaults ADD COLUMN course1_price TEXT",
             "ALTER TABLE defaults ADD COLUMN course2_name TEXT",
@@ -53,6 +51,9 @@ def init_db() -> None:
             "ALTER TABLE defaults ADD COLUMN course3_price TEXT",
             "ALTER TABLE reservation ADD COLUMN course_name TEXT",
             "ALTER TABLE reservation ADD COLUMN course_price TEXT",
+            # 支払方法は廃止（カード決済のみ）→ 不要列を削除（SQLite 3.35+）
+            "ALTER TABLE survey_response DROP COLUMN payment_method",
+            "ALTER TABLE survey_response DROP COLUMN transfer_name",
         ]:
             try:
                 conn.execute(sql)
