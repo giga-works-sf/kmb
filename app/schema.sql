@@ -77,6 +77,17 @@ CREATE TABLE IF NOT EXISTS survey_response (
     updated_at          TEXT NOT NULL
 );
 
+-- リマインドSMS送信履歴（予約1件につき最大3回まで送信可）
+CREATE TABLE IF NOT EXISTS sms_reminder (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    reservation_id  INTEGER NOT NULL,
+    sent_at         TEXT NOT NULL,
+    message_sid     TEXT,           -- Twilio側のSID（ステータス確認用）
+    status          TEXT,           -- queued/sent/delivered/undelivered/failed
+    body            TEXT,           -- 実際に送信した本文
+    FOREIGN KEY (reservation_id) REFERENCES reservation(id)
+);
+
 -- IP別リクエスト回数（日次レート制限）
 CREATE TABLE IF NOT EXISTS rate_limit (
     ip    TEXT NOT NULL,

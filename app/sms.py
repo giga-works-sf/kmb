@@ -11,7 +11,7 @@ import re
 import logging
 from app.config import (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
                          TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET,
-                         TWILIO_VERIFY_SERVICE_SID)
+                         TWILIO_VERIFY_SERVICE_SID, TWILIO_FROM_NUMBER)
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,44 @@ def _make_client():
     if TWILIO_API_KEY_SID and TWILIO_API_KEY_SECRET:
         return Client(TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_ACCOUNT_SID)
     return Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+
+# ── リマインドSMS（自由文面）── Messaging API。OTP用のVerify APIとは別物。───────
+
+def send_reminder_sms(phone_e164: str, body: str) -> tuple[str | None, str | None]:
+    """自由文面のSMSを送信。戻り値: (message_sid, error_message)。
+    DEV_MODEではTwilioを呼ばずダミーSIDを返す。"""
+    if DEV_MODE:
+        dummy_sid = f"DEV{random.randint(100000, 999999)}"
+        logger.info("SMS DEV reminder to %s: %s", phone_e164, body)
+        return dummy_sid, None
+
+    if not TWILIO_FROM_NUMBER:
+        logger.error("TWILIO_FROM_NUMBER 未設定 — リマインドSMSを送信できません")
+        return None, "送信元番号(TWILIO_FROM_NUMBER)が未設定です"
+
+    try:
+        client = _make_client()
+        msg = client.messages.create(to=phone_e164, from_=TWILIO_FROM_NUMBER, body=body)
+        logger.info("Reminder SMS sent: to=%s sid=%s status=%s", phone_e164, msg.sid, msg.status)
+        return msg.sid, None
+    except Exception as exc:
+        logger.error("Reminder SMS send error: %s: %s", type(exc).__name__, exc)
+        return None, str(exc)
+
+
+def fetch_message_status(message_sid: str) -> str | None:
+    """Twilioに問い合わせて配信ステータスを取得。
+    queued / sent / delivered / undelivered / failed のいずれか。"""
+    if DEV_MODE or (message_sid or "").startswith("DEV"):
+        return "delivered"
+    try:
+        client = _make_client()
+        msg = client.messages(message_sid).fetch()
+        return msg.status
+    except Exception as exc:
+        logger.error("Status fetch error: %s: %s", type(exc).__name__, exc)
+        return None
 
 
 # ── Phone normalization ────────────────────────────────────────────────────────

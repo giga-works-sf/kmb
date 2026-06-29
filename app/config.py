@@ -26,6 +26,8 @@ TWILIO_AUTH_TOKEN         = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_API_KEY_SID        = os.getenv("TWILIO_API_KEY_SID", "")
 TWILIO_API_KEY_SECRET     = os.getenv("TWILIO_API_KEY_SECRET", "")
 TWILIO_VERIFY_SERVICE_SID = os.getenv("TWILIO_VERIFY_SERVICE_SID", "")
+# リマインドSMS（自由文面）送信用 — Verifyとは別にTwilio電話番号またはMessaging Service SIDが必要
+TWILIO_FROM_NUMBER         = os.getenv("TWILIO_FROM_NUMBER", "")
 
 # true にするとSMS認証、false（デフォルト）はメール認証
 USE_SMS_VERIFICATION = os.getenv("USE_SMS_VERIFICATION", "false").lower() == "true"
