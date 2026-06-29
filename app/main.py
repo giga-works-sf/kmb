@@ -8,12 +8,14 @@ _log.setup()
 
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.db import init_db
 from app.routers.customer import router as customer_router
 from app.routers.admin import router as admin_router
 
 app = FastAPI(title="KMB Reservation")
+app.mount("/kmb/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 
 
 @app.on_event("startup")
