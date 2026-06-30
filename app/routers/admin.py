@@ -90,7 +90,7 @@ async def day_edit(request: Request, target_date: str,
             default_bodies[rot] = (
                 f"{{name}} 様\n\n【ご予約リマインド】\n"
                 f"{target_date}（{weekday_name}） {t}〜 のご予約をお待ちしております。\n\n"
-                f"KMB {SHOP_NAME}"
+                f"KMB {SHOP_NAME}\nkomemugibudo@gmail.com\n090-6170-8737"
             )
     return _tpl("admin/day_edit.html", request,
                 target_date=target_date, weekday_name=weekday_name,
