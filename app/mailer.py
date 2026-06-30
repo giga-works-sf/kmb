@@ -130,10 +130,7 @@ def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict 
     )
 
     msg = EmailMessage()
-    msg["Subject"] = (
-        f"【ご予約確定】{reservation['date']}({weekday}){start_time}- "
-        f"{reservation['num_people']}名様 KMB {SHOP_NAME}"
-    )
+    msg["Subject"] = f"【ご予約確定】KMB {SHOP_NAME}"
     msg["From"]    = MAIL_FROM or "noreply@example.com"
     msg["To"]      = reservation["email"]
     msg.set_content(body)
