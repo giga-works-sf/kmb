@@ -118,19 +118,17 @@
   <div style="font-size:0.82rem;color:#666;margin-top:6px;line-height:1.9">
     📞 {{ res.phone | format_phone }}<br>
     ✉ {{ res.email }}
+    {# ── リマインドメール送信履歴 ── #}
+    {% set rmds = reminders.get(res.id, []) if reminders is defined else [] %}
+    {% if rmds %}<br>
+    <span style="color:#888">
+      ✉ 送信履歴:
+      {% for r in rmds %}{{ r.sent_at[5:16] }}（{{ {'sent':'送信済','failed':'失敗'}.get(r.status, r.status or '不明') }}）{% if not loop.last %} / {% endif %}{% endfor %}
+    </span>
+    {% endif %}
     {% if res.course_name %}<br>🍽 {{ res.course_name }}{% if res.course_price %}（{{ res.course_price }}）{% endif %}{% endif %}
     {% if res.note %}<br>備考: {{ res.note }}{% endif %}
   </div>
-  {# ── リマインドSMS送信履歴 ── #}
-  {% set rmds = reminders.get(res.id, []) if reminders is defined else [] %}
-  {% if rmds %}
-  <div style="font-size:0.75rem;color:#888;margin-top:6px">
-    ✉ 送信履歴:
-    {% for r in rmds %}
-      {{ r.sent_at[5:16] }}（{{ {'sent':'送信済','failed':'失敗'}.get(r.status, r.status or '不明') }}）{% if not loop.last %} / {% endif %}
-    {% endfor %}
-  </div>
-  {% endif %}
   {# ── アンケート結果 ── #}
   {% set sv = surveys.get(res.id) if surveys is defined else None %}
   {% if sv %}
