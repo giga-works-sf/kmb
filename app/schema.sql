@@ -44,7 +44,6 @@ CREATE TABLE IF NOT EXISTS reservation (
     note        TEXT,
     course_name  TEXT,
     course_price TEXT,
-    confirmed   INTEGER NOT NULL DEFAULT 0,
     status      TEXT NOT NULL DEFAULT 'pending_verify'
                 CHECK (status IN ('active', 'cancelled', 'pending_verify')),
     verification_token TEXT,

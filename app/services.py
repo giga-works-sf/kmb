@@ -141,7 +141,6 @@ def build_admin_day_list(year: int, month: int) -> list[dict]:
                         "seat_num": seat_num, "type": "occupied",
                         "name": res["name"], "is_leader": True,
                         "num_people": res["num_people"],
-                        "confirmed": bool(res["confirmed"]),
                         "res_id": res["id"],
                     })
                     for _ in range(res["num_people"] - 1):
@@ -149,7 +148,6 @@ def build_admin_day_list(year: int, month: int) -> list[dict]:
                         seats.append({
                             "seat_num": seat_num, "type": "occupied",
                             "name": res["name"], "is_leader": False,
-                            "confirmed": bool(res["confirmed"]),
                             "res_id": res["id"],
                         })
                 for _ in range(max(0, c - seat_num)):

@@ -180,7 +180,6 @@ def get_inventory_bulk(dates: list[str]) -> dict[tuple[str, int], dict]:
         rows = conn.execute(
             f"""SELECT date, rotation,
                     SUM(CASE WHEN status='active' THEN num_people ELSE 0 END) AS booked,
-                    SUM(CASE WHEN status='active' AND confirmed=1 THEN num_people ELSE 0 END) AS confirmed_count,
                     SUM(CASE WHEN status='pending_verify' THEN num_people ELSE 0 END) AS pending_count
                 FROM reservation
                 WHERE date IN ({placeholders}) AND status IN ('active','pending_verify')
@@ -189,7 +188,6 @@ def get_inventory_bulk(dates: list[str]) -> dict[tuple[str, int], dict]:
         ).fetchall()
     return {(r["date"], r["rotation"]): {
                 "booked":          r["booked"],
-                "confirmed_count": r["confirmed_count"],
                 "pending_count":   r["pending_count"],
             }
             for r in rows}
@@ -410,11 +408,11 @@ def admin_create_reservation(
             "INSERT INTO reservation "
             "(date,rotation,name,num_people,phone,email,note,"
             "course_name,course_price,"
-            "status,confirmed,created_at,updated_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "status,created_at,updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             (date, rotation, name, num_people, phone, email or "",
              note or None, course_name or None, course_price or None,
-             "active", 0, ts, ts),
+             "active", ts, ts),
         )
         rid = cur.lastrowid
         conn.commit()
@@ -429,15 +427,6 @@ def admin_activate_reservation(rid: int) -> None:
             "token_expires_at=NULL, updated_at=? "
             "WHERE id=? AND status='pending_verify'",
             (now(), rid),
-        )
-        conn.commit()
-
-
-def set_confirmed(rid: int, confirmed: int) -> None:
-    with get_conn() as conn:
-        conn.execute(
-            "UPDATE reservation SET confirmed=?,updated_at=? WHERE id=?",
-            (confirmed, now(), rid),
         )
         conn.commit()
 

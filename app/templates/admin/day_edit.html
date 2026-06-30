@@ -65,13 +65,11 @@
 {# 予約一覧セクション #}
 {% set cap = cfg.capacity_1 if rot_num == 1 else cfg.capacity_2 %}
 {% set total_booked    = rot_active | map(attribute='num_people') | sum %}
-{% set total_confirmed = rot_active | selectattr('confirmed', 'equalto', 1) | map(attribute='num_people') | sum %}
-{% set total_unconfirmed = total_booked - total_confirmed %}
 <h3 style="font-size:1rem;margin-top:{% if rot_num > 1 %}28px{% else %}0{% endif %}">
   予約一覧{% if two_rot %} {{ rot_time }}-{% endif %}
   {% if cap %}
   <span style="font-size:0.8rem;font-weight:normal;color:#555;margin-left:8px">
-    ({{ cap }}席　{{ total_booked }}名予約済み　{{ total_unconfirmed }}名未確定)
+    ({{ cap }}席　{{ total_booked }}名予約済み)
   </span>
   {% endif %}
 </h3>
@@ -109,11 +107,6 @@
 <div class="res-card">
   <div style="font-size:0.95rem;font-weight:600">
     {{ res.name }} 様 / {{ res.num_people }}名
-    <span style="display:inline-block;padding:1px 8px;border-radius:3px;font-size:0.78rem;
-                 font-weight:normal;margin-left:6px;
-                 {{ 'background:#e6f4ea;color:#2e7d32' if res.confirmed else 'background:#fff3e0;color:#e65100' }}">
-      {{ '確定' if res.confirmed else '未確定' }}
-    </span>
   </div>
   <div style="font-size:0.82rem;color:#666;margin-top:6px;line-height:1.9">
     📞 {{ res.phone | format_phone }}<br>
@@ -148,15 +141,6 @@
   </div>
   {% endif %}
   <div class="actions" style="flex-wrap:wrap;align-items:center;gap:6px">
-    <form method="post" action="/kmb/admin/reservation/{{ res.id }}/confirm">
-      <input type="hidden" name="back_date" value="{{ target_date }}">
-      <input type="hidden" name="confirmed" value="{{ 0 if res.confirmed else 1 }}"
-             style="width:auto;padding:0;border:none;margin:0">
-      <button class="btn btn-sm" type="submit"
-              style="{{ 'background:#fff;color:#555;border:1px solid #ccc' if res.confirmed else 'background:#43a047;color:#fff;border:none' }}">
-        {% if res.confirmed %}未確定に戻す{% else %}確定する{% endif %}
-      </button>
-    </form>
     {{ action_forms(res) }}
   </div>
 </div>

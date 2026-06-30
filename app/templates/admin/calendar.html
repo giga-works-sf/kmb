@@ -68,16 +68,8 @@
         空席
       {% elif seat.is_leader %}
         {{ seat.name }}様 {{ seat.num_people }}名
-        <span style="display:inline-block;padding:0 6px;border-radius:3px;font-size:0.72rem;margin-left:4px;
-              {{ 'background:#e6f4ea;color:#2e7d32' if seat.confirmed else 'background:#fff3e0;color:#e65100' }}">
-          {{ '確定' if seat.confirmed else '未確定' }}
-        </span>
       {% else %}
         {{ seat.name }}様 同行者
-        <span style="display:inline-block;padding:0 6px;border-radius:3px;font-size:0.72rem;margin-left:4px;
-              {{ 'background:#e6f4ea;color:#2e7d32' if seat.confirmed else 'background:#fff3e0;color:#e65100' }}">
-          {{ '確定' if seat.confirmed else '未確定' }}
-        </span>
       {% endif %}
     </div>
     {% endfor %}

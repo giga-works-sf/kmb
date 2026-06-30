@@ -250,13 +250,6 @@ async def reservation_activate(request: Request, rid: int):
     return RedirectResponse(f"/kmb/admin/day/{form['back_date']}", status_code=303)
 
 
-@router.post("/reservation/{rid}/confirm", response_class=HTMLResponse)
-async def reservation_confirm(request: Request, rid: int):
-    form = await request.form()
-    models.set_confirmed(rid, int(form["confirmed"]))
-    return RedirectResponse(f"/kmb/admin/day/{form['back_date']}", status_code=303)
-
-
 @router.post("/reservation/{rid}/cancel", response_class=HTMLResponse)
 async def reservation_cancel(request: Request, rid: int):
     form = await request.form()

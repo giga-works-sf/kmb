@@ -54,6 +54,8 @@ def init_db() -> None:
             # 支払方法は廃止（カード決済のみ）→ 不要列を削除（SQLite 3.35+）
             "ALTER TABLE survey_response DROP COLUMN payment_method",
             "ALTER TABLE survey_response DROP COLUMN transfer_name",
+            # 入金確認による「確定」作業は廃止（SMS認証完了=確定）→ confirmed列を削除
+            "ALTER TABLE reservation DROP COLUMN confirmed",
         ]:
             try:
                 conn.execute(sql)
@@ -88,7 +90,6 @@ def init_db() -> None:
                     note        TEXT,
                     course_name  TEXT,
                     course_price TEXT,
-                    confirmed   INTEGER NOT NULL DEFAULT 0,
                     status      TEXT NOT NULL DEFAULT 'pending_verify'
                                 CHECK (status IN ('active', 'cancelled', 'pending_verify')),
                     verification_token TEXT,
@@ -99,7 +100,7 @@ def init_db() -> None:
                 INSERT INTO reservation
                     SELECT id, date, rotation, name, num_people, phone, email, note,
                            NULL, NULL,
-                           confirmed, status, verification_token, token_expires_at,
+                           status, verification_token, token_expires_at,
                            created_at, updated_at
                     FROM _reservation_old;
                 DROP TABLE _reservation_old;
