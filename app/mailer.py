@@ -62,7 +62,11 @@ def send_verification(reservation: dict, effective_cfg: dict, token: str) -> Non
 
 
 def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
-    """SMS認証完了後、予約情報をお知らせするメール（URL・トークンなし）。"""
+    """SMS認証完了後、管理者へ予約確定を通知するメール。"""
+    if not ADMIN_EMAIL:
+        logger.warning("ADMIN_EMAIL not set — skipping reservation notification")
+        return
+
     rotation = reservation["rotation"]
     start_time = (effective_cfg["start_time_1"] if rotation == 1
                   else effective_cfg["start_time_2"])
@@ -71,7 +75,6 @@ def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
     date_str = f"{reservation['date']}（{weekday}）"
 
     body = (
-        f"{reservation['name']} 様\n\n"
         f"SMS認証が完了し、ご予約が確定いたしました。\n\n"
         f"──── ご予約内容 ────\n"
         f"日付　　: {date_str}\n"
@@ -79,6 +82,7 @@ def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
         f"人数　　: {reservation['num_people']}名\n"
         f"代表者名: {reservation['name']} 様\n"
         f"電話番号: {format_phone_display(reservation['phone'])}\n"
+        f"メール　: {reservation.get('email','')}\n"
     )
     if reservation.get("note"):
         body += f"備考　　: {reservation['note']}\n"
@@ -87,7 +91,7 @@ def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
     msg = EmailMessage()
     msg["Subject"] = f"【ご予約確定】{date_str} {start_time}〜 {SHOP_NAME}"
     msg["From"]    = MAIL_FROM or "noreply@example.com"
-    msg["To"]      = reservation["email"]
+    msg["To"]      = ADMIN_EMAIL
     msg.set_content(body)
 
     _dispatch(msg, reservation["id"])

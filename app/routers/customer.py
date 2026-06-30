@@ -192,8 +192,7 @@ async def booking_submit(
                     error="申し訳ありません、ご希望の人数分の空席がなくなりました。")
 
     res = models.get_reservation(rid)
-    # 管理者通知メールはバックグラウンドで送信（レスポンスをブロックしない）
-    background_tasks.add_task(mailer.send_admin_notification, res, cfg)
+    # 管理者への通知はSMS認証完了後に送信する（認証前は予約を確定扱いにしない）
 
     if USE_SMS_VERIFICATION:
         # SMS 認証フロー

@@ -98,7 +98,7 @@
 
   <hr style="border:none;border-top:1px solid #e8d080;margin:14px 0">
 
-  <p>■ 営業時間　◇ 一斉スタート ◇　平日　・19：30　土日祝・昼 13：00 ／ 夜 18：00</p>
+  <p>■ 営業時間　◇ 一斉スタート<br>◇　平日　・19：30　土日祝・昼 13：00 ／ 夜 18：00</p>
   <p>■ 定休日・水曜、他不定休</p>
   <p>■ 定員・先着６席 限定！</p>
   <p>■ 住所・〒151-0073　東京都渋谷区笹塚3−40−1　OURDAYS ２階
@@ -106,18 +106,17 @@
 
   <hr style="border:none;border-top:1px solid #e8d080;margin:14px 0">
 
-  <p>◆コース内容の違いはお酒の内容の違いです🍶🍷</p>
+  <p>◆コースの違いはお酒の違いです🍶🍷</p>
   <p>◆ 貸切大歓迎♪（６〜８名）　時間等応相談👌🏻</p>
   <p>◆ ドリンク持込み無料 ♪　(お店用に2杯分頂戴します)</p>
 
   <p style="text-align:center;color:#bbb;margin:18px 0">━━━━━━━━━━━━━━</p>
 
-  <p style="font-weight:700">【お試しコース】8,000円+税</p>
+  <p style="font-weight:700">【お試しコース】8,000円+税<br>✨最初の約2ヶ月間 の特別価格✨</p>
   <p>⚫料理7品ペアリングコース<br>
-     ← 最初の約2ヶ月間 の特別価格！<br>
-     ※アンケートor Google map口コミ必須</p>
-  <p>・お酒は最大ボトル１本程お楽しみいただけます。<br>
-     ・限定酒もいくつかご用意しております✨</p>
+     ※アンケートor Google map口コミ必須<br>
+     ・お酒は最大ボトル１本程お楽しみ頂けます！<br>
+     ・限定酒もいくつかご用意しております</p>
 
   <p style="text-align:center;color:#bbb;margin:18px 0">━━━━━━━━━━━━━━</p>
 
@@ -226,10 +225,23 @@
   }
 
   sel.addEventListener('change', function () {
-    applyCount(parseInt(this.value) || 0);
+    var n = parseInt(this.value) || 0;
+    // 月移動でリセットされないよう保存
+    if (n) {
+      localStorage.setItem('kmb_num_people', n);
+    } else {
+      localStorage.removeItem('kmb_num_people');
+    }
+    applyCount(n);
   });
 
-  // 初期状態: ブラウザがリロード時にセレクト値を復元している場合も反映
+  // 初期状態: 前回選択した人数を復元（月移動後もリセットされない）
+  var saved = parseInt(localStorage.getItem('kmb_num_people')) || 0;
+  if (saved) {
+    // selectの選択肢に存在すれば反映
+    var opt = sel.querySelector('option[value="' + saved + '"]');
+    if (opt) sel.value = saved;
+  }
   applyCount(parseInt(sel.value) || 0);
 })();
 </script>

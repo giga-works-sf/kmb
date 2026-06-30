@@ -82,14 +82,6 @@
     </div>
     {% endfor %}
 
-    {# SMS未確認 #}
-    {% for pend in rot.pending %}
-    <div style="font-size:0.82rem;line-height:1.8;color:#e65100">
-      <span style="display:inline-block;width:42px;color:#999"></span>
-      申込あり(SMS未確認)：{{ pend.name }}様
-    </div>
-    {% endfor %}
-
     {% endfor %}
 
   </div>
