@@ -75,8 +75,8 @@ def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
     date_str = f"{reservation['date']}（{weekday}）"
 
     body = (
-        f"SMS認証が完了し、ご予約が確定いたしました。\n\n"
-        f"──── ご予約内容 ────\n"
+        f"予約確定(SMS認証済)\n\n"
+        f"──── 予約内容 ────\n"
         f"日付　　: {date_str}\n"
         f"開始時間: {start_time}\n"
         f"人数　　: {reservation['num_people']}名\n"
@@ -89,7 +89,7 @@ def send_reservation_info(reservation: dict, effective_cfg: dict) -> None:
     body += _course_line(reservation)
 
     msg = EmailMessage()
-    msg["Subject"] = f"【ご予約確定】{date_str} {start_time}〜 {SHOP_NAME}"
+    msg["Subject"] = f"【予約確定】{date_str} {start_time}〜 {reservation['num_people']}名様"
     msg["From"]    = MAIL_FROM or "noreply@example.com"
     msg["To"]      = ADMIN_EMAIL
     msg.set_content(body)
@@ -107,9 +107,11 @@ def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict 
     date_str = f"{reservation['date']}（{weekday}）"
 
     body = (
-        f"【予約確定】{SHOP_NAME}\n\n"
+        f"【ご予約確定】KMB {SHOP_NAME}\n\n"
         f"{reservation['name']} 様\n\n"
-        f"ご予約が確定しました。当日のご来店をお待ちしております。\n\n"
+        f"この度は KMB {SHOP_NAME} のご予約ありがとうございました。\n"
+        f"ご予約が確定しましたので以下の通りお知らせいたします。\n\n"
+        f"当日のご来店をお待ちしております。\n\n"
         f"──── ご予約内容 ────\n"
         f"日付　　: {date_str}\n"
         f"開始時間: {start_time}\n"
@@ -122,11 +124,16 @@ def send_booking_confirmed(reservation: dict, effective_cfg: dict, survey: dict 
         f"\n──── キャンセルポリシー ────\n"
         f"キャンセル・人数変更は【7日前まで】にお電話にてご連絡ください。\n"
         f"6〜3日前: 50% ／ 2〜1日前: 80% ／ 当日: 100%\n\n"
-        f"{SHOP_NAME}<komemugibudo@gmail.com>\n"
+        f"KMB {SHOP_NAME}\n"
+        f"komemugibudo@gmail.com\n"
+        f"090-6170-8737\n"
     )
 
     msg = EmailMessage()
-    msg["Subject"] = f"【予約確定】{date_str} {start_time}〜 {SHOP_NAME}"
+    msg["Subject"] = (
+        f"【ご予約確定】{reservation['date']}({weekday}){start_time}- "
+        f"{reservation['num_people']}名様 KMB {SHOP_NAME}"
+    )
     msg["From"]    = MAIL_FROM or "noreply@example.com"
     msg["To"]      = reservation["email"]
     msg.set_content(body)
