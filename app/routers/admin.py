@@ -80,7 +80,7 @@ async def day_edit(request: Request, target_date: str,
     inventory = models.get_inventory_bulk([target_date])
     remaining = {}
     default_bodies = {}
-    default_subject = f"【ご予約リマインド】{SHOP_NAME}"
+    default_subject = f"【ご予約リマインド】KMB {SHOP_NAME}"
     for rot in (1, 2):
         t = cfg["start_time_1"] if rot == 1 else cfg["start_time_2"]
         c = cfg["capacity_1"]   if rot == 1 else cfg["capacity_2"]
@@ -90,7 +90,7 @@ async def day_edit(request: Request, target_date: str,
             default_bodies[rot] = (
                 f"{{name}} 様\n\n【ご予約リマインド】\n"
                 f"{target_date}（{weekday_name}） {t}〜 のご予約をお待ちしております。\n\n"
-                f"{SHOP_NAME}"
+                f"KMB {SHOP_NAME}"
             )
     return _tpl("admin/day_edit.html", request,
                 target_date=target_date, weekday_name=weekday_name,
@@ -277,7 +277,7 @@ async def remind_email_send(request: Request, target_date: str, rot_num: int):
     """その日・その回転のactive予約者全員にリマインドメールを一括送信。
     {name} は各予約者の代表者名に置換される。予約1件あたり最大3回まで。"""
     form = await request.form()
-    subject = form.get("subject") or f"【ご予約リマインド】{SHOP_NAME}"
+    subject = form.get("subject") or f"【ご予約リマインド】KMB {SHOP_NAME}"
     body_template = form.get("body") or ""
 
     reservations = models.list_reservations_for_date(target_date)
